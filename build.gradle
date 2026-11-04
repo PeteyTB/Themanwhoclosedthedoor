@@ -60,3 +60,13 @@ sourceSets.configureEach {
         runtimeClasspath += sourceSets.client.output + sourceSets.client.runtimeClasspath
     }
 }
+
+// Ordinary client loop: avoids the upstream client-gametest world's loading barrier.
+loom.runs {
+    localSmoke {
+        client()
+        source sourceSets.gametest
+        runDir 'build/run/localSmoke'
+        vmArg '-Dlevrn.localSmoke=true'
+    }
+}

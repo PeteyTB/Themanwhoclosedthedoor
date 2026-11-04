@@ -20,7 +20,10 @@ with zipfile.ZipFile(client) as jar:
     metadata = json.loads(jar.read('fabric.mod.json'))
     assert metadata['id'] == 'levrn' and metadata['depends']['minecraft'] == '=1.21.11'
     assert 'dev/levrn/client/LevrnClient.class' in jar.namelist()
-    assert not any('LocalServerIntegrationTest' in name for name in jar.namelist()), 'Test harness leaked into release JAR'
+    assert metadata['version'] == version
+    assert 'levrn.client.mixins.json' in jar.namelist()
+    assert 'dev/levrn/client/mixin/LocalPlayerMixin.class' in jar.namelist()
+    assert not any('LocalServerIntegrationTest' in name or 'LocalSmokeBootstrap' in name for name in jar.namelist()), 'Test harness leaked into release JAR'
 subprocess.run([sys.executable, 'scripts/build-attach.py'], check=True)
 payload = root / 'launcher/payload'
 payload.mkdir(parents=True, exist_ok=True)

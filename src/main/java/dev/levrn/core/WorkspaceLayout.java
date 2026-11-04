@@ -10,17 +10,19 @@ public final class WorkspaceLayout {
     public static Result arrange(List<Feature> features, int columns) {
         if (columns < 1) throw new IllegalArgumentException("columns must be positive");
         List<Section> result = new ArrayList<>();
-        int column = 0, top = 0, rowHeight = 0;
-        for (Category category : Category.values()) {
-            List<Feature> group = features.stream().filter(f -> f.category == category).toList();
-            if (group.isEmpty()) continue;
-            int height = 27 + group.size() * 25;
-            result.add(new Section(category, group, column, top, height));
-            rowHeight = Math.max(rowHeight, height);
-            if (++column == columns) { top += rowHeight + 12; column = 0; rowHeight = 0; }
+        int[] bottoms=new int[columns];
+        for(Category category:Category.values()) {
+            var group=features.stream().filter(f -> f.category==category).toList();
+            for(int first=0;first<group.size();first+=6) {
+                var part=List.copyOf(group.subList(first,Math.min(first+6,group.size())));
+                int lane=0;for(int i=1;i<columns;i++) if(bottoms[i]<bottoms[lane]) lane=i;
+                int h=22+part.size()*18;
+                result.add(new Section(category,part,lane,bottoms[lane],h));bottoms[lane]+=h+8;
+            }
         }
-        return new Result(List.copyOf(result), top + rowHeight);
+        return new Result(List.copyOf(result),Math.max(0,java.util.Arrays.stream(bottoms).max().orElse(8)-8));
     }
+
     public static Result spreadCategory(List<Feature> features, int columns) {
         if (columns < 1) throw new IllegalArgumentException("columns must be positive");
         if (features.isEmpty()) return new Result(List.of(), 0);
@@ -30,9 +32,9 @@ public final class WorkspaceLayout {
             int start = column * rows;
             if (start >= features.size()) break;
             var part = features.subList(start, Math.min(features.size(), start + rows));
-            sections.add(new Section(part.getFirst().category, List.copyOf(part), column, 0, 27 + part.size() * 25));
+            sections.add(new Section(part.getFirst().category, List.copyOf(part), column, 0, 22 + part.size() * 18));
         }
-        return new Result(List.copyOf(sections), 27 + rows * 25);
+        return new Result(List.copyOf(sections), 22 + rows * 18);
     }
     private WorkspaceLayout() { }
 }

@@ -56,6 +56,8 @@ public final class LevrnClient implements ClientModInitializer {
                 });
             }
         });
+        ClientTickEvents.START_CLIENT_TICK.register(runtime::beginTick);
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler,client) -> runtime.disconnected());
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (saveTicks > 0 && --saveTicks == 0) save();
             if (Boolean.getBoolean("levrn.uiSmoke") && !uiSmokeOpened && ++uiSmokeTicks >= 100
@@ -67,13 +69,13 @@ public final class LevrnClient implements ClientModInitializer {
                 else if (client.screen == null || client.screen instanceof net.minecraft.client.gui.screens.TitleScreen) client.setScreen(new LevrnScreen());
             }
             while (panic.consumeClick()) {
-                panic(); runtime.restore(client);
+                panic();
             }
             while (zoom.consumeClick()) {
                 if (client.screen == null) toggle(STATE.feature("zoom"));
             }
             MODULE_KEYS.forEach((id,binding) -> { while (binding.consumeClick()) if (client.screen == null) toggle(STATE.feature(id)); });
-            runtime.tick(client);
+            try { runtime.tick(client); } finally { runtime.restoreCamera(); }
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
             Identifier.fromNamespaceAndPath("levrn", "overlay"), (graphics, delta) -> LevrnHud.render(graphics));
@@ -82,7 +84,7 @@ public final class LevrnClient implements ClientModInitializer {
             flushSave();
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("Levrn 0.3.0-alpha initialized for Minecraft 1.21.11");
+        LOG.info("Levrn 0.4.0-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {
@@ -90,6 +92,11 @@ public final class LevrnClient implements ClientModInitializer {
             InputConstants.Type.KEYSYM, code, KeyMapping.Category.MISC));
     }
 
+    public static void beforeMovement() { runtime.beforeMovement(Minecraft.getInstance()); }
+    public static void afterMovement() { runtime.afterMovement(Minecraft.getInstance()); }
+    public static void corrected() { runtime.corrected(); }
+    public static boolean gameplayActive() { var mc=Minecraft.getInstance();return mc.player!=null && mc.screen==null && mc.isWindowActive() && mc.player.isAlive(); }
+    public static long scaledVelocityUpdates;
     public static String status() { return status; }
     public static String combatStatus() { return runtime.combatStatus; }
     public static void save() {
@@ -104,7 +111,7 @@ public final class LevrnClient implements ClientModInitializer {
         }
     }
     public static void panic() {
-        STATE.disableAll(); save();
+        STATE.disableAll();runtime.restore(Minecraft.getInstance());save();
         Notifications.add("ALL SYSTEMS DISABLED","Every Levrn module has been stopped");
     }
     public static void toggle(dev.levrn.core.Feature feature) {

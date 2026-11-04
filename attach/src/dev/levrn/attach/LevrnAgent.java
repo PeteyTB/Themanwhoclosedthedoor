@@ -30,7 +30,9 @@ public final class LevrnAgent {
             if (attached) { reply(result, "OK", "Levrn is already attached. Right Shift opens the menu."); return; }
             if (pending) { reply(result, "ERROR", "A previous Levrn attachment is still waiting for the game thread."); return; }
             Path payload = Path.of(data.getProperty("payload")).toRealPath();
+            boolean startupHooks;
             try (JarFile jar = new JarFile(payload.toFile())) {
+                startupHooks = jar.getJarEntry("levrn.client.mixins.json") != null;
                 if (jar.getJarEntry("fabric.mod.json") == null || jar.getJarEntry("dev/levrn/client/LevrnClient.class") == null)
                     throw new IllegalArgumentException("Not a packaged Levrn client JAR");
             }
@@ -54,6 +56,8 @@ public final class LevrnAgent {
             Class<?> versionApi = Class.forName("net.fabricmc.loader.api.Version", true, gameLoader);
             if (!versionApi.getMethod("getFriendlyString").invoke(version).equals("1.21.11"))
                 throw new IllegalStateException("Only Minecraft 1.21.11 is supported. Nothing was initialized.");
+
+            if (startupHooks) throw new IllegalStateException("This Levrn build requires startup hooks. Run the installer, close Minecraft, then launch the Levrn Fabric profile. Live attachment cannot install these hooks.");
 
             Object resolver = loaderApi.getMethod("getMappingResolver").invoke(loader);
             Class<?> resolverApi = Class.forName("net.fabricmc.loader.api.MappingResolver", true, gameLoader);

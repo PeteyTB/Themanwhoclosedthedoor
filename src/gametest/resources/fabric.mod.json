@@ -4,6 +4,17 @@
   "version": "1.0",
   "name": "Levrn local integration checks",
   "environment": "client",
-  "entrypoints": {"fabric-client-gametest": ["dev.levrn.client.LocalServerIntegrationTest"]},
-  "depends": {"levrn": "*", "fabric-api": "*", "minecraft": "1.21.11"}
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "dev.levrn.client.LocalServerIntegrationTest"
+    ],
+    "client": [
+      "dev.levrn.client.LocalSmokeBootstrap"
+    ]
+  },
+  "depends": {
+    "levrn": "*",
+    "fabric-api": "*",
+    "minecraft": "1.21.11"
+  }
 }

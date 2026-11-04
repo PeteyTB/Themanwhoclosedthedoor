@@ -2,7 +2,18 @@
 
 An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. This repository is the first alpha foundation for the Levrn project, not a finished commercial release.
 
-**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.3.0-alpha)
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.4.0-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.4.0-alpha)
+
+## Version 0.4: compact workspace, combat sequencing and ten more modules
+
+**41 implemented modules.** [Packet-path comparison, module scope and source evidence](docs/NETWORK_MODULE_REVIEW.md).
+
+- Smaller sidebar interface, independent of Minecraft GUI scale. The standard overview fits all 41 modules without scrolling; category and module inspectors remain available. Settings → Interface size controls density.
+- Aura defaults to **Silent** rotation: the camera stays free while vanilla sends the prepared server rotation in its normal movement update. Visible and manual-aim modes are available. Removed the extra pre-attack rotation packet; paced cursor transactions now send one inventory click at a time. Server corrections pause automation and clear stale targeting state.
+- New modules: **Criticals, Velocity, W Tap, Safe Walk, Auto Walk, Inventory Move, Auto Eat, Auto Fish, Fast Place, No Fire Overlay**. All start disabled. Criticals uses real jumping/descending; Velocity adjusts incoming entity knockback and preserves teleport corrections. These names do not imply verified server bypasses.
+- Existing animations, sliders and per-module keybindings remain. Search matches names, IDs and categories.
+
+**Close Minecraft before upgrading.** Version 0.4 requires startup hooks: run the installer and launch the Levrn Fabric profile. Live attachment cannot install those hooks into an already-running game.
 
 ## Version 0.3: motion and inventory integration
 
@@ -25,7 +36,7 @@ Version 0.2 introduced **30 implemented modules** and a rebuilt multi-category w
 
 ![Multiple module search in the running game](docs/screenshots/search-window.png)
 
-**For existing users whose combat did not target players:** open Settings or the Aura/Trigger inspector and choose **PvP targeting preset**. Existing saved filters are preserved on upgrade. The preset enables player targets and disables shared scoreboard-team filtering. Combat diagnostics show filters, cooldown/alignment state and sent attacks. Attacks now use eye-to-hitbox range and visible rotation; cooldown follows the held item, including swords and axes. This fixes identifiable client-side causes; damage delivery on PvP Legacy remains unverified.
+**For existing users whose combat did not target players:** open **Settings → Combat defaults**, or the Aura/Trigger inspector, and choose **PvP targeting preset**. Existing saved filters are preserved on upgrade. The preset enables player targets and disables shared scoreboard-team filtering. Combat diagnostics show filters, cooldown/alignment state and sent attacks. Attacks use eye-to-hitbox range and the selected rotation mode; cooldown follows the held item, including swords and axes. This fixes identifiable client-side causes; damage delivery on PvP Legacy remains unverified.
 
 New modules: Aim Assist, Auto Weapon, Shield Breaker, Auto Totem, Auto Armor (expanded in 0.3), vanilla Auto Jump, Auto Respawn, No Bob, Stable FOV, No Hurt Cam, No Nausea, No Darkness, Combat Status, Armor HUD, Speed HUD, Ping HUD, Clock, Compass, Keystrokes, Potion HUD. New combat modules start disabled.
 
@@ -46,7 +57,7 @@ Controls: **Right Shift** opens the menu, **C** toggles zoom, **End** disables a
 
 ## Windows executable
 
-`build/dist/Levrn.exe` is the Windows x64 installer/attachment tool. The executable bundles the built Levrn client, official Fabric Installer 1.1.2, Fabric API 0.141.6+1.21.11, and the Java attachment agent. It discovers an existing Java 21 runtime in `JAVA_HOME`, `PATH`, the Minecraft runtime directory, or common Windows JDK directories. Java itself is not bundled. A Java 21 JDK is required for the optional attachment mode.
+`build/dist/Levrn.exe` is the Windows x64 installer/attachment tool. The executable bundles the built Levrn client, official Fabric Installer 1.1.2, Fabric API 0.141.6+1.21.11, and the Java attachment agent. It discovers an existing Java 21 runtime in `JAVA_HOME`, `PATH`, the Minecraft runtime directory, or common Windows JDK directories. Java itself is not bundled. Version 0.4 requires startup installation and restart; the diagnostic `--list` command needs a Java 21 JDK with `jdk.attach`.
 
 1. Close Minecraft and the official Minecraft Launcher.
 2. Run `Levrn.exe`. First installation needs internet access for the official Fabric Loader libraries.
@@ -61,16 +72,9 @@ The installer writes a dedicated game directory at `%APPDATA%\.minecraft\levrn\1
 
 This follows the requested automatic Fabric installation option. It does not attach Fabric to an already-running vanilla game; start the installed profile to use Levrn.
 
-### Optional attachment to an existing Fabric game
+### Live attachment
 
-```powershell
-.\Levrn.exe --list
-.\Levrn.exe --attach 12345
-```
-
-Choose the PID of a Minecraft **1.21.11 / Fabric / Fabric API** instance running as your Windows user, using Java 21. The Java Attach API must be enabled in that JVM. If its launch settings disable dynamic agents, enable `-XX:+EnableDynamicAgentLoading` and restart it. The tool checks the Minecraft version and dependencies before adding Levrn's classes, initializes on the Minecraft client thread, and waits for acknowledgement. Repeated initialization is guarded. Missing dependencies and disabled agents return errors rather than reporting successful attachment. It does not install or inject Fabric into a live vanilla JVM and does not redefine Minecraft classes.
-
-The Fabric attachment path is experimental and has not been exercised in a real game here. Automated integration tests verify clean rejection of unsupported and agent-disabled JVMs while leaving the target running. Pressing End disables modules; upgrading an attached version or unloading its classes requires restarting Minecraft.
+Version 0.4 uses startup mixins for movement sequencing, velocity, edge protection and rendering. The attachment agent rejects late installation with an explicit restart instruction. Use the executable's normal installation mode, close Minecraft, then launch the Levrn Fabric profile. `--list` can still list running JVMs; `--attach` cannot add these hooks to a game that is already running. Earlier releases' attachment behavior is historical and does not apply to 0.4.
 
 ### Rebuild the executable
 
@@ -93,7 +97,7 @@ Use a **Java 21 JDK** (a JRE alone is insufficient).
 ./gradlew runClient
 ```
 
-The intended distributable is `build/libs/levrn-0.3.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
+The intended distributable is `build/libs/levrn-0.4.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
 
 In the managed cloud environment:
 
@@ -108,20 +112,22 @@ The setup helper installs a checksum-verified JDK under `/workspace/.tools`. The
 
 `bash scripts/test-core.sh` exercises the actual pure-Java module registry and profile implementation without Minecraft downloads. `./gradlew check` also runs these checks once Fabric dependencies resolve.
 
-The full Minecraft 1.21.11 Gradle build now passes, including all **65 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
+The full Minecraft 1.21.11 Gradle build now passes, including all **82 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
 
-Go installer checks pass for profile preservation, idempotent updates, malformed/conflicting input, recoverable backups, version checks, and embedded payload extraction. A real end-to-end Fabric installation ran through the Linux build in an isolated temporary Minecraft directory, installed the official libraries and both mod JARs, and preserved the existing profile. Two real JVM attachment tests pass for unsupported and agent-disabled targets.
+Go installer checks pass for profile preservation, idempotent updates, malformed/conflicting input, recoverable backups, version checks, and embedded payload extraction. A real end-to-end Fabric installation ran through the Linux build in an isolated temporary Minecraft directory, installed the official libraries and both mod JARs, and preserved the existing profile. Two real JVM attachment rejection tests cover unsupported and agent-disabled targets; 0.4 additionally rejects late installation of its required startup hooks.
 
-The Windows PE executable was cross-compiled; **it has not been run on Windows**. The redesigned UI, custom font and animations have been rendered in the actual development client on an isolated software display. Settings, numeric sliders, module toggles and multi-module search were exercised with real input; slider changes were confirmed in the saved profile. Combat, inventory automation, real-game runtime attachment, and server-specific behavior remain unverified. This remains a prerelease alpha.
+The Windows PE executable was cross-compiled; **it has not been run on Windows**. The redesigned UI, custom font and animations have been rendered in the actual development client on an isolated software display. Settings, numeric sliders, module toggles and multi-module search were exercised with real input; slider changes were confirmed in the saved profile. Controlled local gameplay validation is described below. Public-server anti-cheat compatibility remains unverified. This remains a prerelease alpha.
 
 The optional `runClientGameTest` task starts an isolated integrated-server scenario covering target filters, server damage, armor, totems and replenishment. Test classes are excluded from release JARs. Both cloud attempts (including a retry with bounded Java worker threads) timed out during world loading, before any gameplay assertions; neither is a passing server test.
 
-## Gameplay acceptance checks (pending)
+`runLocalSmoke` exercises an ordinary client and integrated server, bypassing the older test framework's world-loading barrier. Its test mod and automatic world creation are opt-in and excluded from the packaged client. The run passed: target filtering, Silent Aura with an unchanged backwards-facing camera, Trigger damage, paced worn-armor upgrades, replenishment conserving 67 items, incoming knockback scaling, real-jump critical attacks, and Safe Walk with Auto Walk. Startup mixin auditing also completed. This proves controlled local interactions, not server-specific anti-cheat acceptance.
+
+## Gameplay acceptance checks
 
 1. Launch the exact 1.21.11 development client. Open a singleplayer world; open Right Shift, search modules, switch categories and themes, resize the window, and change GUI scale.
 2. Toggle Sprint and Auto Tool, mine with multiple hotbar tools, and verify the prior slot restores without overriding a manual slot change.
 3. Enable/disable Zoom and Brightness, disconnect and reconnect, and verify original settings restore.
-4. Enable Trigger/Aura separately and together around mobs. Verify one attack per cooldown, no attacks through walls or while menus are open, and target exclusions/range. Verify any player interactions only in an agreed test world.
+4. Enable Trigger/Aura separately and together around mobs. Verify cooldown, visibility, target filters, all rotation modes and camera restoration. Verify player interactions only in an agreed test world; valid packet formatting does not guarantee acceptance by server anti-cheat.
 5. Change settings, restart, and verify persistence. Press End and confirm every module stops. Test profile reload failures with a copy of the profile.
 6. Confirm HUD elements respect F1 and visually inspect placement at small and large GUI scales.
 

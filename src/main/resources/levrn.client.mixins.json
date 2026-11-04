@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "dev.levrn.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LocalPlayerMixin",
+    "ClientPacketListenerMixin",
+    "PlayerMixin",
+    "MinecraftAccessor",
+    "FishingHookAccessor",
+    "ScreenEffectRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -28,6 +28,7 @@ final class LevrnButton extends Button {
     }
     LevrnButton(String text, int x, int y, int width, Runnable action, boolean highlighted, UiMotion.Channel motion, boolean switchStyle) {
         super(x, y, width, 20, InterfaceText.component(text), b -> action.run(), DEFAULT_NARRATION);
+        setHeight(16);
         this.highlighted = highlighted;
         this.motion = motion; this.switchStyle = switchStyle;
     }
@@ -37,21 +38,21 @@ final class LevrnButton extends Button {
         motion.update(isHoveredOrFocused(),highlighted);
         double hover = motion.hover.value(), on = motion.enabled.value();
         int border = Motion.mix(Motion.mix(0xFF243647,accent,on*0.45),accent,hover*0.8);
-        rounded(g, x-1, y-1, w+2, 22, UiMotion.fade((int)(hover*45)<<24 | accent & 0xFFFFFF));
-        rounded(g, x, y, w, 20, UiMotion.fade(border));
-        rounded(g, x + 1, y + 1, w - 2, 18,
+        rounded(g, x-1, y-1, w+2, 18, UiMotion.fade((int)(hover*45)<<24 | accent & 0xFFFFFF));
+        rounded(g, x, y, w, 16, UiMotion.fade(border));
+        rounded(g, x + 1, y + 1, w - 2, 14,
             UiMotion.fade(Motion.mix(Motion.mix(0xFF0C1724,0xFF16384A,on),0xFF214359,hover*0.65)));
         var font = Minecraft.getInstance().font;
-        String text = InterfaceText.fit(getMessage().getString(), Math.max(1, w - (switchStyle ? 37 : 8)));
-        InterfaceText.draw(g, text, switchStyle ? x+7 : x + (w - InterfaceText.width(text)) / 2, y + 6,
+        String text = InterfaceText.fit(getMessage().getString(), Math.max(1, w - (switchStyle ? 29 : 8)));
+        InterfaceText.draw(g, text, switchStyle ? x+5 : x + (w - InterfaceText.width(text)) / 2, y + 4,
             UiMotion.fade(Motion.mix(LevrnHud.TEXT,accent,Math.max(on,hover))));
         if (switchStyle) {
-            int trackX = x+w-27;
-            rounded(g,trackX,y+6,20,8,UiMotion.fade(Motion.mix(0xFF314350,accent,on*0.7)));
-            rounded(g,trackX+2+(int)Math.round(on*10),y+7,6,6,UiMotion.fade(Motion.mix(0xFF8495A1,0xFFE8FFFF,on)));
+            int trackX = x+w-21;
+            rounded(g,trackX,y+5,16,6,UiMotion.fade(Motion.mix(0xFF314350,accent,on*0.7)));
+            rounded(g,trackX+1+(int)Math.round(on*10),y+6,4,4,UiMotion.fade(Motion.mix(0xFF8495A1,0xFFE8FFFF,on)));
         } else if (hover>0.01 || on>0.01) {
             int length = (int)((w-10)*Math.max(hover,on));
-            g.fill(x+(w-length)/2,y+18,x+(w+length)/2,y+19,UiMotion.fade(accent));
+            g.fill(x+(w-length)/2,y+14,x+(w+length)/2,y+15,UiMotion.fade(accent));
         }
     }
     static void rounded(GuiGraphics g, int x, int y, int w, int h, int color) {

@@ -22,7 +22,7 @@ This review inspects the supplied program contents. Decompiled text is a reconst
 
 ## What changed in Levrn
 
-- 31 implemented modules, up from 10. The latest additions and selection rationale are in the [Kuro/Prestige review](KURO_PRESTIGE_REVIEW.md). No planned module is shown as a working toggle.
+- 41 implemented modules, up from 10. See the [0.4 packet-path and module review](NETWORK_MODULE_REVIEW.md). The latest additions and selection rationale are in the [Kuro/Prestige review](KURO_PRESTIGE_REVIEW.md). No planned module is shown as a working toggle.
 - Compact category lanes, continuous scrolling, category spreading, multi-module global queries (`aura, sprint`), a module inspector, Rajdhani typography (OFL) and a Nova theme.
 - PvP preset and explicit filters; team filtering is optional. Hitbox distance and visible rotation precede attacks. Cooldown follows the held weapon. Diagnostics report why an attack is waiting and count sent attacks without claiming server-confirmed hits.
 - New combat helpers: Aim Assist, Auto Weapon, Shield Breaker and Auto Totem. Auto Armor can upgrade worn armor using base armor, toughness and durability; it can preserve an equipped Elytra. Auto Replenish refills remembered hotbar stacks. Auto Jump uses vanilla auto jump. Auto Respawn uses the normal respawn request.
@@ -68,8 +68,8 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `LeftClicker` | combat | Not implemented |
 | `LegitAura2` | combat | Not implemented |
 | `Reach` | combat | Not implemented |
-| `Velocity` | combat | Not implemented |
-| `WTap` | combat | Not implemented |
+| `Velocity` | combat | Velocity: incoming entity knockback scaling |
+| `WTap` | combat | W Tap: automated-attack sprint reset |
 | `ConfigModule` | config | Not implemented |
 | `ConfigSettings` | config | Not implemented |
 | `Armour` | hotkey | Not implemented |
@@ -83,7 +83,7 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `AutoHeader` | movement | Not implemented |
 | `Boost` | movement | Not implemented |
 | `Fly` | movement | Not implemented |
-| `InvMove` | movement | Not implemented |
+| `InvMove` | movement | Inventory Move: physical movement keys |
 | `KeepSprint` | movement | Not implemented |
 | `LegitSpeed` | movement | Not implemented |
 | `NoSlow` | movement | Not implemented |
@@ -107,13 +107,13 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `Bridger` | player | Not implemented |
 | `ChestStealer` | player | Not implemented |
 | `FallSpeed` | player | Not implemented |
-| `FastPlace` | player | Not implemented |
+| `FastPlace` | player | Fast Place: bounded 2–4 tick block use |
 | `Freecam` | player | Not implemented |
 | `InvManager` | player | Not implemented |
 | `NoFall` | player | Not implemented |
 | `Parkour` | player | Not implemented |
 | `RightClicker` | player | Not implemented |
-| `SafeWalk` | player | Not implemented |
+| `SafeWalk` | player | Safe Walk: vanilla edge protection |
 | `AntiShuffle` | render | Not implemented |
 | `ArrayListMod` | render | Active Modules HUD |
 | `BedDefense` | render | Not implemented |
@@ -234,11 +234,11 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `CartRefill` | misc | Not implemented |
 | `CartStealer` | misc | Not implemented |
 | `ChestStealer` | misc | Not implemented |
-| `Criticals` | misc | Not implemented |
+| `Criticals` | misc | Criticals: real-jump Aura/Trigger helper |
 | `CrystalOptimizer` | misc | Not implemented |
 | `EnemyFaker` | misc | Not implemented |
 | `FastEXP` | misc | Not implemented |
-| `FastPlace` | misc | Not implemented |
+| `FastPlace` | misc | Fast Place: bounded 2–4 tick block use |
 | `Friends` | misc | Not implemented |
 | `KeyPearl` | misc | Not implemented |
 | `MiddleClickFriend` | misc | Not implemented |
@@ -259,8 +259,8 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `Parkour` | movement | Not implemented |
 | `ShortPearl` | movement | Not implemented |
 | `Sprint` | movement | Sprint |
-| `Velocity` | movement | Not implemented |
-| `WTap` | movement | Not implemented |
+| `Velocity` | movement | Velocity: incoming entity knockback scaling |
+| `WTap` | movement | W Tap: automated-attack sprint reset |
 | `ExtendedReach` | spear | Not implemented |
 | `InstantLunge` | spear | Not implemented |
 | `SpearDamageIndicator` | spear | Not implemented |

@@ -31,5 +31,15 @@
   "key.levrn.module.clock": "Levrn: Clock",
   "key.levrn.module.compass": "Levrn: Compass",
   "key.levrn.module.keystrokes": "Levrn: Keystrokes",
-  "key.levrn.module.potion_hud": "Levrn: Potion HUD"
+  "key.levrn.module.potion_hud": "Levrn: Potion HUD",
+  "key.levrn.module.criticals": "Levrn: Criticals",
+  "key.levrn.module.velocity": "Levrn: Velocity",
+  "key.levrn.module.w_tap": "Levrn: W Tap",
+  "key.levrn.module.safe_walk": "Levrn: Safe Walk",
+  "key.levrn.module.auto_walk": "Levrn: Auto Walk",
+  "key.levrn.module.inventory_move": "Levrn: Inventory Move",
+  "key.levrn.module.auto_eat": "Levrn: Auto Eat",
+  "key.levrn.module.auto_fish": "Levrn: Auto Fish",
+  "key.levrn.module.fast_place": "Levrn: Fast Place",
+  "key.levrn.module.no_fire": "Levrn: No Fire Overlay"
 }

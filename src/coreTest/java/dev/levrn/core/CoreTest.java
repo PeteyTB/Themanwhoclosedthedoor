@@ -116,6 +116,27 @@ public final class CoreTest {
             Files.writeString(path,"schema=3\nui.motionSpeed=NaN\n");
             try { store.load(motionCopy);throw new AssertionError("invalid animation speed accepted"); }
             catch(java.io.IOException expected) { check(motionCopy.motionSpeed()==1,"malformed animation profile is transactional"); }
+            check(CombatGuard.validPose(0,64,0,180,90),"valid boundary pitch accepted");
+            check(!CombatGuard.validPose(Double.NaN,64,0,0,0),"NaN position rejected");
+            check(!CombatGuard.validPose(0,64,0,Float.POSITIVE_INFINITY,0),"infinite yaw rejected");
+            check(!CombatGuard.validPose(0,64,0,0,91),"invalid pitch rejected");
+            check(!CombatGuard.validPose(30_000_001,64,0,0,0),"out-of-world position rejected");
+            check(CombatGuard.critical(true,true,true,0,0,1)==CombatGuard.Critical.JUMP,"critical uses a real jump");
+            check(CombatGuard.critical(true,true,false,0,0.2,1)==CombatGuard.Critical.WAIT,"no critical during ascent");
+            check(CombatGuard.critical(true,true,false,1,-0.1,1)==CombatGuard.Critical.HIT,"critical waits for real descent");
+            check(CombatGuard.critical(true,true,false,1,-0.1,0.5f)==CombatGuard.Critical.WAIT,"critical respects cooldown");
+            check(CombatGuard.critical(true,false,true,0,0,1)==CombatGuard.Critical.NORMAL,"water/flight use ordinary attacks");
+            check(CombatGuard.critical(false,true,true,0,0,1)==CombatGuard.Critical.NORMAL,"disabled critical preserves normal attack");
+            check(new ClientState().auraRotation()==ClientState.AuraRotation.SILENT,"new profiles default to camera-independent aura");
+            var compact=WorkspaceLayout.arrange(new ClientState().features(),4);
+            check(compact.height()<=272,"all modules fit the standard compact overview");
+            check(compact.sections().stream().flatMap(section -> section.features().stream()).distinct().count()==41,"expanded workspace contains every module exactly once");
+            var updated=new ClientState();updated.setAuraRotation(ClientState.AuraRotation.OFF);updated.setVelocityHorizontal(35);updated.setVelocityVertical(90);updated.setUiScale(1.2);updated.setEatHunger(12);updated.setPlaceDelay(3);
+            store.save(updated);var persisted=new ClientState();store.load(persisted);
+            check(persisted.auraRotation()==ClientState.AuraRotation.OFF && persisted.velocityHorizontal()==35 && persisted.velocityVertical()==90,"combat mode and knockback settings persist");
+            check(persisted.uiScale()==1.2 && persisted.eatHunger()==12 && persisted.placeDelay()==3,"compact UI and utility settings persist");
+            Files.writeString(path,"schema=3\nmodule.aura=false\n");store.load(persisted);
+            check(persisted.auraRotation()==ClientState.AuraRotation.SILENT && !persisted.enabled("criticals") && !persisted.enabled("velocity"),"older profiles migrate without enabling new combat modules");
             System.out.println("PASS: " + passed + " core behavior checks");
         } finally {
             try (var files = Files.walk(dir)) {

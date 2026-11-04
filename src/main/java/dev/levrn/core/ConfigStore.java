@@ -22,7 +22,7 @@ public final class ConfigStore {
         try {
             try (Reader reader = Files.newBufferedReader(path)) { p.load(reader); }
             String schema = p.getProperty("schema", "1");
-            if (!schema.equals("1") && !schema.equals("2") && !schema.equals("3")) throw new IllegalArgumentException("Unsupported config schema");
+            if (!schema.equals("1") && !schema.equals("2") && !schema.equals("3") && !schema.equals("4")) throw new IllegalArgumentException("Unsupported config schema");
             for (Feature f : parsed.features()) {
                 String value = p.getProperty("module." + f.id);
                 if (value != null) f.setEnabled(parseBoolean(value));
@@ -38,7 +38,8 @@ public final class ConfigStore {
             parsed.setRotateAura(parseBoolean(p.getProperty("combat.rotate", "true")));
             parsed.setCooldown(number(p, "combat.cooldown", 0.92));
             parsed.setAimSpeed(number(p, "combat.aimSpeed", 25));
-            parsed.setTargetFov(number(p, "combat.fov", 180));
+            double fov=number(p,"combat.fov",360);
+            parsed.setTargetFov(!p.containsKey("combat.auraRotation") && fov==180 ? 360 : fov);
             parsed.setTotemHealth(number(p, "combat.totemHealth", 12));
             parsed.setTheme(Theme.valueOf(p.getProperty("visual.theme", "NOVA")));
             parsed.setReducedMotion(parseBoolean(p.getProperty("ui.reducedMotion", "false")));
@@ -49,6 +50,9 @@ public final class ConfigStore {
             parsed.setInventoryInterval(number(p, "inventory.interval", 4));
             parsed.setWindowX(number(p, "ui.windowX", 0.5)); parsed.setWindowY(number(p, "ui.windowY", 0.5));
             parsed.setReplenishBelow((int)number(p,"inventory.replenishBelow",8));
+            parsed.setAuraRotation(ClientState.AuraRotation.valueOf(p.getProperty("combat.auraRotation","SILENT")));
+            parsed.setVelocityHorizontal(number(p,"velocity.horizontal",0)); parsed.setVelocityVertical(number(p,"velocity.vertical",100));
+            parsed.setUiScale(number(p,"ui.scale",1.5)); parsed.setEatHunger((int)number(p,"player.eatHunger",14)); parsed.setPlaceDelay((int)number(p,"player.placeDelay",2));
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid Levrn config; original file preserved", e);
         }
@@ -66,6 +70,8 @@ public final class ConfigStore {
         state.setPreserveElytra(parsed.preserveElytra()); state.setInventoryInterval(parsed.inventoryInterval());
         state.setWindowX(parsed.windowX()); state.setWindowY(parsed.windowY());
         state.setReplenishBelow(parsed.replenishBelow());
+        state.setAuraRotation(parsed.auraRotation());state.setVelocityHorizontal(parsed.velocityHorizontal());state.setVelocityVertical(parsed.velocityVertical());
+        state.setUiScale(parsed.uiScale());state.setEatHunger(parsed.eatHunger());state.setPlaceDelay(parsed.placeDelay());
     }
 
     private static double number(Properties properties, String key, double fallback) {
@@ -82,7 +88,7 @@ public final class ConfigStore {
 
     public void save(ClientState state) throws IOException {
         Properties p = new Properties();
-        p.setProperty("schema", "3");
+        p.setProperty("schema", "4");
         for (Feature f : state.features()) p.setProperty("module." + f.id, Boolean.toString(f.enabled()));
         p.setProperty("combat.range", Double.toString(state.attackRange()));
         p.setProperty("combat.players", Boolean.toString(state.targetPlayers()));
@@ -104,10 +110,13 @@ public final class ConfigStore {
         p.setProperty("inventory.interval", Double.toString(state.inventoryInterval()));
         p.setProperty("ui.windowX", Double.toString(state.windowX())); p.setProperty("ui.windowY", Double.toString(state.windowY()));
         p.setProperty("inventory.replenishBelow",Integer.toString(state.replenishBelow()));
+        p.setProperty("combat.auraRotation",state.auraRotation().name());
+        p.setProperty("velocity.horizontal",Double.toString(state.velocityHorizontal()));p.setProperty("velocity.vertical",Double.toString(state.velocityVertical()));
+        p.setProperty("ui.scale",Double.toString(state.uiScale()));p.setProperty("player.eatHunger",Integer.toString(state.eatHunger()));p.setProperty("player.placeDelay",Integer.toString(state.placeDelay()));
         Files.createDirectories(path.getParent());
         Path temp = Files.createTempFile(path.getParent(), ".levrn-", ".tmp");
         try {
-            try (Writer writer = Files.newBufferedWriter(temp)) { p.store(writer, "Levrn profile v3"); }
+            try (Writer writer = Files.newBufferedWriter(temp)) { p.store(writer, "Levrn profile v4"); }
             try { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING); }
         } finally { Files.deleteIfExists(temp); }

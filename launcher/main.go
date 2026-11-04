@@ -41,8 +41,8 @@ func main() {
 
 func run() int {
 	fmt.Println("LEVRN " + clientVersion + " / Minecraft 1.21.11")
-	attach := flag.String("attach", "", "attach to an existing Fabric Minecraft PID")
-	list := flag.Bool("list", false, "list Java processes for attachment")
+	attach := flag.String("attach", "", "legacy attachment request (0.4 requires installation and restart)")
+	list := flag.Bool("list", false, "list Java processes for diagnostics")
 	mcDir := flag.String("minecraft-dir", defaultMinecraftDir(), "official Minecraft launcher directory")
 	javaPath := flag.String("java", "", "Java 21 executable (JDK required for attachment)")
 	flag.Parse()
