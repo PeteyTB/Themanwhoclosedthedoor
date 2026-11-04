@@ -1,0 +1,9 @@
+.gradle/
+build/
+run/
+.idea/
+*.iml
+.DS_Store
+__pycache__/
+*.pyc
+/launcher/payload/

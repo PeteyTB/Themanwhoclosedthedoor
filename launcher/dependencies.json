@@ -1,0 +1,14 @@
+{
+  "fabric-installer.jar": {
+    "url": "https://maven.fabricmc.net/net/fabricmc/fabric-installer/1.1.2/fabric-installer-1.1.2.jar",
+    "sha256": "61e035bf7bf70153e127440ce34de47c9036f0a2d0c65d1529454bd35ceefe4f"
+  },
+  "FABRIC-INSTALLER-LICENSE.txt": {
+    "url": "https://raw.githubusercontent.com/FabricMC/fabric-installer/master/LICENSE",
+    "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+  },
+  "fabric-api.jar": {
+    "url": "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.141.6+1.21.11/fabric-api-0.141.6+1.21.11.jar",
+    "sha256": "bdff7fd7e220085cfad2ff9b1f40dde6534ae0b96cf378f97a374bc54cb9ed0f"
+  }
+}
