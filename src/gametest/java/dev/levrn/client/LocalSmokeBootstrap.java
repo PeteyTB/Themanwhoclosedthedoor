@@ -22,7 +22,8 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
     private int phase,ticks,total;
     private float before,cameraYaw;
     private double jumpPeak;
-    private long beforeVelocity;
+    private long beforeVelocity,attackBefore;
+    private boolean nativeSprint,nativeSprintRelease;
     private CompletableFuture<Snapshot> result;
     private record Snapshot(float health,boolean diamond,boolean totem,int hotbar,int inventory,double x,double y) { }
     @Override public void onInitializeClient() {
@@ -32,7 +33,7 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
     private void next(int phase) { this.phase=phase;ticks=0; }
     private void commands(Minecraft mc,String... commands) {
         var server=mc.getSingleplayerServer();
-        server.execute(() -> {for(String command:commands) server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),command);});
+        server.execute(() -> {for(String command:commands) server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),command);});
     }
     private void snapshot(Minecraft mc) {
         var server=mc.getSingleplayerServer();
@@ -43,9 +44,24 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
                 player.getOffhandItem().is(Items.TOTEM_OF_UNDYING),player.getInventory().getItem(1).getCount(),player.getInventory().getItem(10).getCount(),player.getX(),player.getY());
         });
     }
+    private void setupHud(Minecraft mc) {
+        LevrnClient.STATE.disableAll();
+        for(String id:new String[]{"hud","coordinates","active_list","target_hud","combat_status","armor_hud","speed_hud","ping_hud","clock","compass","keystrokes","potion_hud","aim_assist","auto_weapon","shield_breaker"}) LevrnClient.STATE.feature(id).setEnabled(true);
+        commands(mc,"gamemode creative @a","tp @a 0.0 4.0 0.0 0 0","kill @e[type=iron_golem]","summon minecraft:iron_golem 0.0 4.0 2.3 {NoAI:1b,Invulnerable:1b,Health:70f}","time set noon","weather clear",
+            "item replace entity @a armor.head with minecraft:diamond_helmet[minecraft:damage=120]",
+            "item replace entity @a armor.chest with minecraft:netherite_chestplate[minecraft:damage=500]",
+            "item replace entity @a armor.legs with minecraft:iron_leggings[minecraft:damage=170]",
+            "item replace entity @a armor.feet with minecraft:leather_boots[minecraft:damage=55]",
+            "effect give @a speed 120 1 true","effect give @a resistance infinite 0 true","effect give @a haste 8 0 true");
+    }
+    private void disconnect(Minecraft mc) {
+        try {java.nio.file.Files.deleteIfExists(mc.gameDirectory.toPath().resolve("config/levrn/last-disconnect.properties"));}
+        catch(java.io.IOException e) {throw new AssertionError(e);}
+        mc.getConnection().getConnection().disconnect(net.minecraft.network.chat.Component.literal("Levrn local verification complete"));
+    }
     private void tick(Minecraft mc) {
         ticks++;total++;
-        if(total>3600) throw new AssertionError("Local smoke timeout at phase "+phase+" screen "+mc.screen);
+        if(total>(Boolean.getBoolean("levrn.hudPreview") ? 10000 : 3600)) throw new AssertionError("Local smoke timeout at phase "+phase+" screen "+mc.screen);
         if(mc.player!=null) {mc.setWindowActive(true);jumpPeak=Math.max(jumpPeak,mc.player.getY());}
         var state=LevrnClient.STATE;
         switch(phase) {
@@ -72,6 +88,7 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
                 }
             }
             case 3 -> {
+                if(Boolean.getBoolean("levrn.hudOnly")) {setupHud(mc);next(20);break;}
                 if(ticks==40) {
                     state.setTargetPlayers(false);state.setTargetMobs(false);state.setTargetFov(360);state.setAimSpeed(90);
                     state.setAuraRotation(ClientState.AuraRotation.SILENT);state.feature("aura").setEnabled(true);snapshot(mc);
@@ -154,9 +171,62 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
                     require(result.join().x()<4.4 && result.join().y()>3.9,"Safe Walk allowed walking off the platform");
                     require(result.join().x()>3.3,"Auto Walk did not move forward");
                     System.out.println("LEVRN_SMOKE_PASS edge protection and Auto Walk: server X "+result.join().x()+", Y "+result.join().y());
-                    state.disableAll();LevrnClient.runtime.restore(mc);System.out.println("LEVRN_SMOKE_SUCCESS ordinary integrated-server loop");mc.stop();next(13);
+                    state.disableAll();LevrnClient.runtime.restore(mc);
+                    commands(mc,"tp @a 0.0 4.0 0.0 30 0","tp @e[type=iron_golem] 0.0 4.0 2.3");next(13);
                 }
             }
+            case 13 -> {
+                if(ticks==20) {
+                    snapshot(mc);attackBefore=LevrnClient.runtime.sentAttacks;cameraYaw=mc.player.getYRot();
+                    state.feature("aura").setEnabled(true);state.feature("w_tap").setEnabled(true);state.feature("sprint").setEnabled(true);state.feature("auto_walk").setEnabled(true);
+                    nativeSprint=nativeSprintRelease=false;
+                }
+                if(ticks>20) {
+                    nativeSprint |= mc.player.input.keyPresses.sprint();
+                    nativeSprintRelease |= LevrnClient.runtime.sentAttacks>attackBefore && !mc.player.input.keyPresses.sprint();
+                }
+                if(ticks==21 && result.isDone()) before=result.join().health();
+                if(ticks==37) snapshot(mc);
+                if(ticks>=38 && result.isDone()) {
+                    require(result.join().health()<before,"Moving Aura/W Tap/Sprint did not damage the server target");
+                    require(Math.abs(result.join().x())>.25 && Math.abs(mc.player.getYRot()-cameraYaw)<.01,"Moving silent aim changed the camera or stopped all movement");
+                    require(nativeSprint && nativeSprintRelease,"Sprint reset was not represented in native input");
+                    System.out.println("LEVRN_SMOKE_PASS moving Aura + W Tap + Sprint: native sprint input/reset, fixed camera, server health "+before+" -> "+result.join().health());
+                    state.feature("hud").setEnabled(true);commands(mc,"tp @a 0.0 4.0 0.0 30 0");next(14);
+                }
+            }
+            case 14 -> {if(ticks==15) {commands(mc,"tp @a 0.0 4.0 0.0 30 0");next(15);}}
+            case 15 -> {
+                if(ticks>15) {
+                    require(state.features().stream().noneMatch(f -> f.category!=dev.levrn.core.Category.VISUAL && f.enabled()),"Repeated corrections did not stop gameplay modules");
+                    require(state.enabled("hud"),"Correction stop disabled the visual HUD");
+                    System.out.println("LEVRN_SMOKE_PASS repeated server corrections stop gameplay modules and preserve HUD");
+                    System.out.println("LEVRN_SMOKE_SUCCESS ordinary integrated-server gameplay");
+                    if(Boolean.getBoolean("levrn.hudPreview")) {setupHud(mc);next(20);}else {disconnect(mc);next(21);}
+                }
+            }
+            case 20 -> {
+                if(ticks==40) {
+                    for(String id:new String[]{"aim_assist","auto_weapon","shield_breaker"}) state.feature(id).setEnabled(true);
+                    System.out.println("LEVRN_HUD_PREVIEW_READY");
+                }
+                if(java.nio.file.Files.exists(mc.gameDirectory.toPath().resolve("hud-preview.scale3")) && mc.options.guiScale().get()!=3) {mc.options.guiScale().set(3);mc.resizeDisplay();}
+                if(java.nio.file.Files.exists(mc.gameDirectory.toPath().resolve("hud-preview.scale2")) && mc.options.guiScale().get()!=2) {mc.options.guiScale().set(2);mc.resizeDisplay();}
+                if(ticks%80==0) commands(mc,"effect give @a haste 8 0 true");
+                if(java.nio.file.Files.exists(mc.gameDirectory.toPath().resolve("hud-preview.done"))) {disconnect(mc);next(21);}
+            }
+            case 21 -> {
+                var path=mc.gameDirectory.toPath().resolve("config/levrn/last-disconnect.properties");
+                if(ticks>10 && java.nio.file.Files.exists(path)) {
+                    try {
+                        var report=new java.util.Properties();try(var in=java.nio.file.Files.newBufferedReader(path)) {report.load(in);}
+                        require("Levrn local verification complete".equals(report.getProperty("reason")),"Disconnect diagnostic lost the actual reason");
+                        require(report.containsKey("enabledModules") && report.containsKey("packet.00"),"Disconnect report lacks module or packet-type context");
+                    } catch(java.io.IOException e) {throw new AssertionError(e);}
+                    System.out.println("LEVRN_SMOKE_PASS disconnect reason and bounded packet-type report persisted");mc.stop();next(99);
+                }
+            }
+
         }
     }
 }

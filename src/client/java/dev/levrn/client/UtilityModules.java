@@ -23,15 +23,16 @@ final class UtilityModules {
     private final Set<KeyMapping> owned=new HashSet<>();
     private LocalPlayer eater;
     private int priorSlot=-1,foodSlot=-1,fishDelay;
-    private boolean eating,recast;
-    private static boolean physical(Minecraft mc,KeyMapping mapping) {
+    private boolean eating,recast,sprintOwned;
+    private LocalPlayer sprintOwner;
+    static boolean physical(Minecraft mc,KeyMapping mapping) {
         var key=KeyBindingHelper.getBoundKeyOf(mapping);
         if(key.getType()==InputConstants.Type.MOUSE) return GLFW.glfwGetMouseButton(mc.getWindow().handle(),key.getValue())==GLFW.GLFW_PRESS;
         return key.getValue()>=0 && key.getType()==InputConstants.Type.KEYSYM && InputConstants.isKeyDown(mc.getWindow(),key.getValue());
     }
     private void hold(KeyMapping key) { key.setDown(true);owned.add(key); }
     private void releaseKeys(Minecraft mc) { for(var key:owned) key.setDown(physical(mc,key));owned.clear(); }
-    void beginTick(Minecraft mc,ClientState state,ActionBudget budget) {
+    void beginTick(Minecraft mc,ClientState state,ActionBudget budget,boolean suppressSprint,boolean jumpRequested) {
         releaseKeys(mc);
         if(mc.player==null || !mc.player.isAlive() || !mc.isWindowActive()) { restore(mc);return; }
         if(state.enabled("inventory_move") && mc.screen instanceof AbstractContainerScreen<?>) {
@@ -41,6 +42,17 @@ final class UtilityModules {
         }
         if(mc.screen!=null) { finishEating(mc,budget);return; }
         if(state.enabled("auto_walk")) hold(mc.options.keyUp);
+        if(suppressSprint) {mc.options.keySprint.setDown(false);owned.add(mc.options.keySprint);mc.player.setSprinting(false);}
+        else if(state.enabled("sprint") && mc.options.keyUp.isDown() && !mc.player.isCrouching() && !mc.player.isUsingItem()) {
+            if(!mc.player.isSprinting()) {sprintOwned=true;sprintOwner=mc.player;}
+            hold(mc.options.keySprint);
+        } else if(sprintOwned) restoreSprint(mc);
+        if(jumpRequested) hold(mc.options.keyJump);
+        if(state.enabled("safe_walk") && mc.player.onGround() && !mc.player.getAbilities().flying) {
+            double forward=(mc.options.keyUp.isDown()?1:0)-(mc.options.keyDown.isDown()?1:0),side=(mc.options.keyLeft.isDown()?1:0)-(mc.options.keyRight.isDown()?1:0);
+            double yaw=Math.toRadians(mc.player.getYRot()),dx=side*Math.cos(yaw)-forward*Math.sin(yaw),dz=forward*Math.cos(yaw)+side*Math.sin(yaw);
+            if((dx!=0 || dz!=0) && mc.level.noCollision(mc.player,mc.player.getBoundingBox().move(mc.player.getDeltaMovement().x+dx*.25,-.6,mc.player.getDeltaMovement().z+dz*.25))) hold(mc.options.keyShift);
+        }
         if(eating && (eater!=mc.player || !state.enabled("auto_eat") || mc.player.getFoodData().getFoodLevel()>=20
             || mc.player.getInventory().getSelectedSlot()!=foodSlot || mc.player.getMainHandItem().isEmpty())) finishEating(mc,budget);
         if(!eating && state.enabled("auto_eat") && mc.player.getFoodData().getFoodLevel()<=state.eatHunger()
@@ -58,6 +70,15 @@ final class UtilityModules {
             }
         }
         if(eating) hold(mc.options.keyUse);
+    }
+    void remapMovement(Minecraft mc,float cameraYaw,float serverYaw) {
+        var keys=dev.levrn.core.MovementKeys.remap(mc.options.keyUp.isDown(),mc.options.keyDown.isDown(),mc.options.keyLeft.isDown(),mc.options.keyRight.isDown(),cameraYaw,serverYaw);
+        mc.options.keyUp.setDown(keys.forward());mc.options.keyDown.setDown(keys.backward());mc.options.keyLeft.setDown(keys.left());mc.options.keyRight.setDown(keys.right());
+        owned.add(mc.options.keyUp);owned.add(mc.options.keyDown);owned.add(mc.options.keyLeft);owned.add(mc.options.keyRight);
+    }
+    private void restoreSprint(Minecraft mc) {
+        if(sprintOwned && sprintOwner==mc.player && !physical(mc,mc.options.keySprint)) sprintOwner.setSprinting(false);
+        sprintOwned=false;sprintOwner=null;
     }
     private void finishEating(Minecraft mc,ActionBudget budget) {
         if(!eating) return;
@@ -85,7 +106,7 @@ final class UtilityModules {
         }
     }
     void restore(Minecraft mc) {
-        releaseKeys(mc);
+        releaseKeys(mc);restoreSprint(mc);
         if(eater!=null && priorSlot>=0 && eater.getInventory().getSelectedSlot()==foodSlot) eater.getInventory().setSelectedSlot(priorSlot);
         eating=false;eater=null;priorSlot=foodSlot=-1;fishDelay=0;recast=false;
     }

@@ -137,6 +137,29 @@ public final class CoreTest {
             check(persisted.uiScale()==1.2 && persisted.eatHunger()==12 && persisted.placeDelay()==3,"compact UI and utility settings persist");
             Files.writeString(path,"schema=3\nmodule.aura=false\n");store.load(persisted);
             check(persisted.auraRotation()==ClientState.AuraRotation.SILENT && !persisted.enabled("criticals") && !persisted.enabled("velocity"),"older profiles migrate without enabling new combat modules");
+            var forward=MovementKeys.remap(true,false,false,false,0,90);
+            check(forward.left() && !forward.forward() && !forward.backward() && !forward.right(),"silent rotation remaps forward input into native left input at 90 degrees");
+            var backward=MovementKeys.remap(true,false,false,false,0,180);
+            check(backward.backward() && !backward.forward(),"opposite server yaw preserves intended world direction");
+            var same=MovementKeys.remap(true,false,true,false,35,35);
+            check(same.forward() && same.left() && !same.right(),"unchanged yaw preserves diagonal native input");
+            check(MovementKeys.remap(true,true,true,true,0,90).equals(new MovementKeys(false,false,false,false)),"opposing inputs cancel without fabricated movement");
+            boolean bounded=true;
+            for(int camera=-180;camera<=180;camera+=15) for(int server=-180;server<=180;server+=15) {
+                var input=MovementKeys.remap(true,false,false,false,camera,server);
+                int f=(input.forward()?1:0)-(input.backward()?1:0),side=(input.left()?1:0)-(input.right()?1:0);
+                double yaw=Math.toRadians(server),actual=Math.atan2(side*Math.cos(yaw)-f*Math.sin(yaw),f*Math.cos(yaw)+side*Math.sin(yaw));
+                double desired=Math.toRadians(-camera),difference=Math.abs(Math.atan2(Math.sin(actual-desired),Math.cos(actual-desired)));
+                bounded &= difference<=Math.toRadians(22.5001);
+            }
+            check(bounded,"native eight-direction correction stays within 22.5 degrees of the intended world direction");
+            try {MovementKeys.remap(true,false,false,false,Float.NaN,0);throw new AssertionError("NaN yaw accepted");}
+            catch(IllegalArgumentException expected) {check(true,"input correction rejects non-finite rotation");}
+            var corrections=new CorrectionWindow();
+            check(!corrections.record(10),"first correction does not trip the automation stop");
+            check(corrections.record(110),"repeated correction within five seconds trips the stop");
+            check(!corrections.record(211),"corrections outside the window do not accumulate");
+            corrections.reset();check(!corrections.record(212),"new connection resets correction history");
             System.out.println("PASS: " + passed + " core behavior checks");
         } finally {
             try (var files = Files.walk(dir)) {

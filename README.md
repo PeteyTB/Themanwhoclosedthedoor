@@ -2,7 +2,15 @@
 
 An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. This repository is the first alpha foundation for the Levrn project, not a finished commercial release.
 
-**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.4.0-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.4.0-alpha)
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.4.1-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.4.1-alpha)
+
+## Version 0.4.1: supplied HUD and input synchronization
+
+The user's HUD code is adapted to Minecraft 1.21.11: cyan bracketed panels, an animated watermark, compact info rows, animated durability bars, potion timers and glowing keystrokes. All HUD text uses one oversampled TrueType font. Existing visual toggles remain available. [HUD screenshot](docs/screenshots/hud-world.png) · [implementation and verification](docs/HUD_AND_INPUT_FIX.md).
+
+![HUD adapted from the supplied code](docs/screenshots/hud-world.png)
+
+Silent Aura now prepares rotation **before vanilla physics**, with matching native movement directions. Sprint/W Tap update native sprint input; Criticals and Safe Walk use native jump/sneak input. A repeated server correction stops gameplay modules and preserves the HUD. Disconnect details and packet-type history stay locally in `config/levrn/last-disconnect.properties`. A server-specific rejection is still unverified.
 
 ## Version 0.4: compact workspace, combat sequencing and ten more modules
 
@@ -97,7 +105,7 @@ Use a **Java 21 JDK** (a JRE alone is insufficient).
 ./gradlew runClient
 ```
 
-The intended distributable is `build/libs/levrn-0.4.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
+The intended distributable is `build/libs/levrn-0.4.1-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
 
 In the managed cloud environment:
 
@@ -112,7 +120,7 @@ The setup helper installs a checksum-verified JDK under `/workspace/.tools`. The
 
 `bash scripts/test-core.sh` exercises the actual pure-Java module registry and profile implementation without Minecraft downloads. `./gradlew check` also runs these checks once Fabric dependencies resolve.
 
-The full Minecraft 1.21.11 Gradle build now passes, including all **82 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
+The full Minecraft 1.21.11 Gradle build now passes, including all **92 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
 
 Go installer checks pass for profile preservation, idempotent updates, malformed/conflicting input, recoverable backups, version checks, and embedded payload extraction. A real end-to-end Fabric installation ran through the Linux build in an isolated temporary Minecraft directory, installed the official libraries and both mod JARs, and preserved the existing profile. Two real JVM attachment rejection tests cover unsupported and agent-disabled targets; 0.4 additionally rejects late installation of its required startup hooks.
 
@@ -120,7 +128,7 @@ The Windows PE executable was cross-compiled; **it has not been run on Windows**
 
 The optional `runClientGameTest` task starts an isolated integrated-server scenario covering target filters, server damage, armor, totems and replenishment. Test classes are excluded from release JARs. Both cloud attempts (including a retry with bounded Java worker threads) timed out during world loading, before any gameplay assertions; neither is a passing server test.
 
-`runLocalSmoke` exercises an ordinary client and integrated server, bypassing the older test framework's world-loading barrier. Its test mod and automatic world creation are opt-in and excluded from the packaged client. The run passed: target filtering, Silent Aura with an unchanged backwards-facing camera, Trigger damage, paced worn-armor upgrades, replenishment conserving 67 items, incoming knockback scaling, real-jump critical attacks, and Safe Walk with Auto Walk. Startup mixin auditing also completed. This proves controlled local interactions, not server-specific anti-cheat acceptance.
+`runLocalSmoke` exercises an ordinary client and integrated server, bypassing the older test framework's world-loading barrier. Its test mod and automatic world creation are opt-in and excluded from the packaged client. The run passed: target filtering, Silent Aura with an unchanged backwards-facing camera, Trigger damage, paced worn-armor upgrades, replenishment conserving 67 items, incoming knockback scaling, real-jump critical attacks, and Safe Walk with Auto Walk. The updated run also passes moving Aura + W Tap + Sprint with matching native input, repeated-correction shutdown, and actual disconnect-report persistence. Startup mixin auditing also completed. This proves controlled local interactions, not server-specific anti-cheat acceptance.
 
 ## Gameplay acceptance checks
 

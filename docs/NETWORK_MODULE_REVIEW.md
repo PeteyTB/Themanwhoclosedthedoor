@@ -1,5 +1,7 @@
 # Levrn 0.4: packet sequencing, compact UI and module expansion
 
+This records 0.4.0. [Version 0.4.1](HUD_AND_INPUT_FIX.md) supersedes its rotation timing and native movement/sprint/jump/sneak handling.
+
 The reported kick said only “sending invalid packets.” Without a server log or a specific packet/check name, its exact cause remains unknown. This update removes avoidable packet patterns and adds controlled verification; it does not claim universal anti-cheat compatibility.
 
 ## Reference comparison

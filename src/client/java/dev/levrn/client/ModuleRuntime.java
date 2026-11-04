@@ -41,17 +41,26 @@ final class ModuleRuntime {
     private final InventoryTransaction inventoryTransaction=new InventoryTransaction();
     private final UtilityModules utility=new UtilityModules();
     private LocalPlayer rotatingPlayer;
-    private float cameraYaw,cameraPitch,serverYaw,serverPitch;
+    private float cameraYaw,cameraPitch,cameraYawOld,cameraPitchOld,serverYaw,serverPitch;
+    private boolean jumpRequested;
+    private LivingEntity preparedTarget;
+    private long worldTicks;
+    private final dev.levrn.core.CorrectionWindow correctionWindow=new dev.levrn.core.CorrectionWindow();
     private boolean silentRotation,serverRotationKnown,attackPending;
     private int correctionWait=20,sprintWait;
     long serverCorrections;
     void beginTick(Minecraft mc) {
-        actionBudget.nextTick();
+        restoreCamera();preparedTarget=null;worldTicks++;actionBudget.nextTick();
         if(correctionWait>0) correctionWait--;
         if(sprintWait>0) sprintWait--;
-        if(correctionWait>0 || inventoryTransaction.active()) utility.restore(mc);else utility.beginTick(mc,state,actionBudget);
+        if(correctionWait>0 || inventoryTransaction.active()) utility.restore(mc);
+        else {utility.beginTick(mc,state,actionBudget,sprintWait>0 || state.enabled("criticals") && (state.enabled("aura") || state.enabled("trigger")) && currentTarget!=null,jumpRequested && state.enabled("criticals"));prepareRotation(mc);}
+        jumpRequested=false;
     }
-    void corrected() { inventoryTransaction.abort(Minecraft.getInstance());restoreCamera(); correctionWait=10; serverRotationKnown=false;attackPending=false;currentTarget=null;serverCorrections++; }
+    void corrected() {
+        var mc=Minecraft.getInstance();inventoryTransaction.abort(mc);restoreCamera();correctionWait=10;serverRotationKnown=false;attackPending=false;currentTarget=null;preparedTarget=null;serverCorrections++;
+        if(worldTicks>40 && mc.screen==null && state.features().stream().anyMatch(f -> f.category!=dev.levrn.core.Category.VISUAL && f.enabled()) && correctionWindow.record(worldTicks)) LevrnClient.stopAutomation("Repeated server position corrections");
+    }
     void disconnected() { inventoryTransaction.abort(Minecraft.getInstance());restoreCamera();utility.restore(Minecraft.getInstance());correctionWait=20;serverRotationKnown=false;attackPending=false;currentTarget=null; }
     private boolean canInteract(Minecraft mc) {
         return mc.player!=null && mc.level!=null && mc.gameMode!=null && mc.screen==null && mc.isWindowActive()
@@ -59,7 +68,7 @@ final class ModuleRuntime {
             && CombatGuard.validPose(mc.player.getX(),mc.player.getY(),mc.player.getZ(),mc.player.getYRot(),mc.player.getXRot());
     }
     void restoreCamera() {
-        if(silentRotation && rotatingPlayer!=null) { rotatingPlayer.setYRot(cameraYaw);rotatingPlayer.setXRot(cameraPitch); }
+        if(silentRotation && rotatingPlayer!=null) { rotatingPlayer.setYRot(cameraYaw);rotatingPlayer.setXRot(cameraPitch);rotatingPlayer.yRotO=cameraYawOld;rotatingPlayer.xRotO=cameraPitchOld; }
         silentRotation=false;rotatingPlayer=null;
     }
     LivingEntity currentTarget;
@@ -69,7 +78,7 @@ final class ModuleRuntime {
     ModuleRuntime(ClientState state) { this.state = state; }
 
     void tick(Minecraft mc) {
-        if (owner != mc.player) { restore(mc); owner = mc.player; respawnRequested = false; correctionWait=20; serverRotationKnown=false; java.util.Arrays.fill(hotbarTemplates,null); }
+        if (owner != mc.player) { restore(mc); owner = mc.player; respawnRequested = false;worldTicks=0;correctionWindow.reset(); correctionWait=20; serverRotationKnown=false; java.util.Arrays.fill(hotbarTemplates,null); }
         if (mc.player == null || mc.level == null) { restore(mc); combatStatus = "Join a world to use combat"; return; }
         if(inventoryTransaction.active()) { inventoryTransaction.tick(mc,actionBudget,(int)state.inventoryInterval());currentTarget=null;combatStatus="Inventory transaction - synchronizing";return; }
         trackHotbar(mc);
@@ -90,12 +99,6 @@ final class ModuleRuntime {
             combatStatus = mc.screen != null ? "Paused: menu open" : "Paused: inactive or dead";
             return;
         }
-        boolean shouldSprint = sprintWait==0 && state.enabled("sprint") && mc.options.keyUp.isDown()
-            && !mc.player.isCrouching() && !mc.player.isUsingItem()
-            && (mc.player.getFoodData().getFoodLevel() > 6 || mc.player.getAbilities().mayfly);
-        if (shouldSprint) {
-            if (!mc.player.isSprinting()) { mc.player.setSprinting(true); sprintOwned = true; }
-        } else restoreSprint(mc);
         if (inventoryDelay > 0) inventoryDelay--;
         inventory(mc);
 
@@ -117,7 +120,7 @@ final class ModuleRuntime {
 
     // Invoked immediately before vanilla constructs its one movement update.
     void beforeMovement(Minecraft mc) {
-        attackPending=false;restoreCamera();
+        attackPending=false;
         if(sprintWait>0 && mc.player!=null) mc.player.setSprinting(false);
         if (!canInteract(mc) || correctionWait>0 || actionBudget.used() || inventoryTransaction.active()) {
             currentTarget=null;combatStatus=correctionWait>0 ? "Waiting for server synchronization" : "Paused: input or inventory";return;
@@ -151,13 +154,9 @@ final class ModuleRuntime {
         if ((state.enabled("auto_weapon") || state.enabled("shield_breaker")) && chooseWeapon(mc, currentTarget)) {
             combatStatus = "Weapon changed - waiting for cooldown"; return;
         }
-        if (state.enabled("aura") && state.auraRotation()!=ClientState.AuraRotation.OFF) {
-            cameraYaw=mc.player.getYRot();cameraPitch=mc.player.getXRot();rotatingPlayer=mc.player;
-            boolean hidden=state.auraRotation()==ClientState.AuraRotation.SILENT;
-            if(hidden && serverRotationKnown) { mc.player.setYRot(serverYaw);mc.player.setXRot(serverPitch); }
-            aim(mc,currentTarget);
-            serverYaw=mc.player.getYRot();serverPitch=mc.player.getXRot();serverRotationKnown=true;silentRotation=hidden;
-        } else if(assisting) aim(mc,currentTarget);
+        if((state.enabled("aura") && state.auraRotation()!=ClientState.AuraRotation.OFF || assisting) && currentTarget!=preparedTarget) {
+            combatStatus="Waiting for synchronized rotation";return;
+        }
         boolean triggerTarget = state.enabled("trigger") && mc.hitResult instanceof EntityHitResult hit && hit.getEntity() == currentTarget;
         if (!triggerTarget && !state.enabled("aura")) { combatStatus = "Aim Assist tracking - no auto attack"; return; }
         if (!aimedAt(mc, currentTarget)) { combatStatus = "Aligning view with target"; return; }
@@ -169,7 +168,7 @@ final class ModuleRuntime {
         var critical=CombatGuard.critical(state.enabled("criticals"),!mc.player.isInWater() && !mc.player.isInLava()
             && !mc.player.onClimbable() && !mc.player.hasEffect(MobEffects.BLINDNESS) && !mc.player.isFallFlying()
             && !mc.player.getAbilities().flying,mc.player.onGround(),mc.player.fallDistance,mc.player.getDeltaMovement().y,charge);
-        if(critical==CombatGuard.Critical.JUMP) { mc.player.setSprinting(false);sprintWait=3;mc.player.jumpFromGround();combatStatus="Criticals: jumping";return; }
+        if(critical==CombatGuard.Critical.JUMP) { mc.player.setSprinting(false);sprintWait=3;jumpRequested=true;combatStatus="Criticals: preparing native jump input";return; }
         if(critical==CombatGuard.Critical.WAIT) { combatStatus="Criticals: waiting for descent";return; }
         if(critical==CombatGuard.Critical.HIT) { mc.player.setSprinting(false);sprintWait=3; }
         attackPending=true;
@@ -184,6 +183,25 @@ final class ModuleRuntime {
             if(state.enabled("w_tap")) { mc.player.setSprinting(false);sprintWait=3; }
             combatStatus="Attack sent: "+currentTarget.getName().getString();
         } finally { attackPending=false;restoreCamera(); }
+    }
+
+    private void prepareRotation(Minecraft mc) {
+        if(!canInteract(mc) || actionBudget.used() || mc.player.isUsingItem() || mc.options.keyUse.isDown() || mc.options.keyAttack.isDown() && mc.hitResult instanceof BlockHitResult) return;
+        boolean aura=state.enabled("aura") && state.auraRotation()!=ClientState.AuraRotation.OFF;
+        boolean assist=state.enabled("aim_assist") && mc.options.keyAttack.isDown();
+        if(!aura && !assist) return;
+        if((state.enabled("trigger") || mc.options.keyAttack.isDown()) && mc.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof LivingEntity living && rejection(mc,living).isEmpty()) preparedTarget=living;
+        if(preparedTarget==null) {
+            var eligible=mc.level.getEntitiesOfClass(LivingEntity.class,mc.player.getBoundingBox().inflate(state.attackRange()+1),entity -> rejection(mc,entity).isEmpty());
+            int id=TargetRetention.choose(currentTarget==null ? -1 : currentTarget.getId(),eligible.stream().map(e -> new TargetRetention.Candidate(e.getId(),distance(mc,e))).toList(),state.stickyTargets());
+            preparedTarget=eligible.stream().filter(e -> e.getId()==id).findFirst().orElse(null);
+        }
+        if(preparedTarget==null) return;
+        cameraYaw=mc.player.getYRot();cameraPitch=mc.player.getXRot();cameraYawOld=mc.player.yRotO;cameraPitchOld=mc.player.xRotO;
+        rotatingPlayer=mc.player;silentRotation=aura && state.auraRotation()==ClientState.AuraRotation.SILENT;
+        if(silentRotation && serverRotationKnown) {mc.player.setYRot(serverYaw);mc.player.setXRot(serverPitch);}
+        aim(mc,preparedTarget);serverYaw=mc.player.getYRot();serverPitch=mc.player.getXRot();serverRotationKnown=true;
+        if(silentRotation) utility.remapMovement(mc,cameraYaw,serverYaw);
     }
 
     private void inventory(Minecraft mc) {
@@ -281,7 +299,7 @@ final class ModuleRuntime {
     private String rejection(Minecraft mc, LivingEntity target) {
         return TargetPolicy.reject(state, new TargetPolicy.Candidate(target == mc.player, target.isAlive(), target.isSpectator(),
             target.isInvulnerable(), target instanceof Player, target instanceof Player p && p.isCreative(), target instanceof Mob,
-            mc.player.isAlliedTo(target), target.isInvisible(), mc.player.hasLineOfSight(target), distance(mc, target), angle(mc, target)));
+            mc.player.isAlliedTo(target), target.isInvisible(), mc.player.hasLineOfSight(target) && mc.level.clip(new net.minecraft.world.level.ClipContext(mc.player.getEyePosition(),aimPoint(target),net.minecraft.world.level.ClipContext.Block.COLLIDER,net.minecraft.world.level.ClipContext.Fluid.NONE,mc.player)).getType()==net.minecraft.world.phys.HitResult.Type.MISS, distance(mc, target), angle(mc, target)));
     }
     private double distance(Minecraft mc, LivingEntity target) {
         Vec3 eye = mc.player.getEyePosition(); var box = target.getBoundingBox();
@@ -293,7 +311,7 @@ final class ModuleRuntime {
     private double angle(Minecraft mc, LivingEntity target) {
         Vec3 delta = aimPoint(target).subtract(mc.player.getEyePosition());
         float yaw = (float)Math.toDegrees(Math.atan2(delta.z, delta.x)) - 90;
-        return Math.abs(Mth.wrapDegrees(yaw - mc.player.getYRot()));
+        return Math.abs(Mth.wrapDegrees(yaw - (silentRotation ? cameraYaw : mc.player.getYRot())));
     }
     private void aim(Minecraft mc, LivingEntity target) {
         Vec3 delta = aimPoint(target).subtract(mc.player.getEyePosition());
@@ -314,7 +332,7 @@ final class ModuleRuntime {
     }
     @SuppressWarnings("unchecked") private <T> void restoreOption(OptionInstance<T> option) { option.set((T)options.remove(option)); }
     void restore(Minecraft mc) {
-        inventoryTransaction.abort(mc);restoreCamera();utility.restore(mc);attackPending=false;
+        inventoryTransaction.abort(mc);restoreCamera();utility.restore(mc);attackPending=false;jumpRequested=false;preparedTarget=null;
         for (var option : java.util.List.copyOf(options.keySet())) restoreOption(option);
         restoreSprint(mc); restoreTool(true); currentTarget = null;
     }

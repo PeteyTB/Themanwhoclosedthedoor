@@ -19,7 +19,8 @@ final class Notifications {
     }
     private static void renderNotices(GuiGraphics g,int canvasWidth,int canvasHeight) {
         long now = System.nanoTime(); QUEUE.removeIf(n -> now - n.created() > 3_000_000_000L);
-        int y = canvasHeight - 58;
+        boolean lowerHud=net.minecraft.client.Minecraft.getInstance().player!=null && (LevrnClient.STATE.enabled("keystrokes") || LevrnClient.STATE.enabled("armor_hud"));
+        int y = canvasHeight - (lowerHud ? 134 : 58);
         for (Notice notice : QUEUE.reversed()) {
             double age = (now-notice.created())/1e9;
             double phase = LevrnClient.STATE.reducedMotion() ? 1 : Math.min(Math.clamp(age/0.25,0,1),Math.clamp((3-age)/0.4,0,1));

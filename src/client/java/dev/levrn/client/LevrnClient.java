@@ -56,6 +56,7 @@ public final class LevrnClient implements ClientModInitializer {
                 });
             }
         });
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler,sender,client) -> NetworkDiagnostics.joined());
         ClientTickEvents.START_CLIENT_TICK.register(runtime::beginTick);
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler,client) -> runtime.disconnected());
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -84,7 +85,7 @@ public final class LevrnClient implements ClientModInitializer {
             flushSave();
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("Levrn 0.4.0-alpha initialized for Minecraft 1.21.11");
+        LOG.info("Levrn 0.4.1-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {
@@ -92,6 +93,13 @@ public final class LevrnClient implements ClientModInitializer {
             InputConstants.Type.KEYSYM, code, KeyMapping.Category.MISC));
     }
 
+    public static void packetSent(net.minecraft.network.protocol.Packet<?> packet) {NetworkDiagnostics.sent(packet);}
+    public static void disconnectReason(String reason) {NetworkDiagnostics.disconnected(reason);}
+    public static void stopAutomation(String reason) {
+        NetworkDiagnostics.stopped(reason);
+        STATE.features().stream().filter(f -> f.category!=dev.levrn.core.Category.VISUAL).forEach(f -> f.setEnabled(false));
+        runtime.restore(Minecraft.getInstance());save();Notifications.add("AUTOMATION STOPPED",reason);LOG.warn("Stopped gameplay modules: {}",reason);
+    }
     public static void beforeMovement() { runtime.beforeMovement(Minecraft.getInstance()); }
     public static void afterMovement() { runtime.afterMovement(Minecraft.getInstance()); }
     public static void corrected() { runtime.corrected(); }

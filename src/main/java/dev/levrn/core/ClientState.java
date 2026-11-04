@@ -14,7 +14,7 @@ public final class ClientState {
         new Feature("criticals", "Criticals", "Time Aura/Trigger attacks to real descending jumps.", Category.COMBAT, false),
         new Feature("velocity", "Velocity", "Scale incoming entity knockback; server corrections remain authoritative.", Category.COMBAT, false),
         new Feature("w_tap", "W Tap", "Reset sprint briefly after Aura/Trigger attacks.", Category.COMBAT, false),
-        new Feature("safe_walk", "Safe Walk", "Apply vanilla edge protection without forcing your sneak key.", Category.MOVEMENT, false),
+        new Feature("safe_walk", "Safe Walk", "Use native sneak input near edges, then restore your input.", Category.MOVEMENT, false),
         new Feature("auto_walk", "Auto Walk", "Walk forward automatically; stop while a screen is open.", Category.MOVEMENT, false),
         new Feature("inventory_move", "Inventory Move", "Read real movement keys inside inventory screens, without packet buffering.", Category.MOVEMENT, false),
         new Feature("auto_eat", "Auto Eat", "Select hotbar food and eat at low hunger, then restore your slot.", Category.PLAYER, false),

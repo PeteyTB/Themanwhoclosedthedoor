@@ -5,10 +5,10 @@
   "client": [
     "LocalPlayerMixin",
     "ClientPacketListenerMixin",
-    "PlayerMixin",
     "MinecraftAccessor",
     "FishingHookAccessor",
-    "ScreenEffectRendererMixin"
+    "ScreenEffectRendererMixin",
+    "ClientCommonPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

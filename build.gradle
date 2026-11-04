@@ -70,3 +70,13 @@ loom.runs {
         vmArg '-Dlevrn.localSmoke=true'
     }
 }
+
+loom.runs {
+    hudPreview {
+        client()
+        source sourceSets.gametest
+        runDir 'build/run/hudPreview'
+        vmArg '-Dlevrn.localSmoke=true'
+        vmArg '-Dlevrn.hudPreview=true'
+    }
+}
