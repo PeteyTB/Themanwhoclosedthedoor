@@ -9,7 +9,8 @@ root = pathlib.Path(__file__).resolve().parent.parent
 jdk = pathlib.Path(os.environ.get('JAVA_HOME', '/workspace/.tools/jdk-21.0.8+9'))
 java = str(jdk / 'bin/java')
 agent = root / 'build/attach/levrn-agent.jar'
-client = root / 'build/libs/levrn-0.1.0-alpha.jar'
+version = next(line.split('=', 1)[1].strip() for line in (root / 'gradle.properties').read_text().splitlines() if line.startswith('mod_version='))
+client = root / f'build/libs/levrn-{version}.jar'
 with tempfile.TemporaryDirectory(prefix='levrn-attach-test-') as out:
     subprocess.run([str(jdk / 'bin/javac'), '--release', '21', '-d', out, str(root / 'attach/test/PlainTarget.java')], check=True)
     for extra, expected in [([], 'no Fabric Loader'), (['-XX:-EnableDynamicAgentLoading'], 'Dynamic agent loading is not enabled')]:

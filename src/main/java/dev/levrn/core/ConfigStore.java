@@ -21,7 +21,8 @@ public final class ConfigStore {
         ClientState parsed = new ClientState();
         try {
             try (Reader reader = Files.newBufferedReader(path)) { p.load(reader); }
-            if (!p.getProperty("schema", "1").equals("1")) throw new IllegalArgumentException("Unsupported config schema");
+            String schema = p.getProperty("schema", "1");
+            if (!schema.equals("1") && !schema.equals("2")) throw new IllegalArgumentException("Unsupported config schema");
             for (Feature f : parsed.features()) {
                 String value = p.getProperty("module." + f.id);
                 if (value != null) f.setEnabled(parseBoolean(value));
@@ -30,8 +31,16 @@ public final class ConfigStore {
             if (!Double.isFinite(range)) throw new IllegalArgumentException("Non-finite range");
             parsed.setAttackRange(range);
             parsed.setZoomFov(Integer.parseInt(p.getProperty("visual.zoomFov", "30")));
-            parsed.setTargetPlayers(parseBoolean(p.getProperty("combat.players", "false")));
-            parsed.setTheme(Theme.valueOf(p.getProperty("visual.theme", "DUSK")));
+            parsed.setTargetPlayers(parseBoolean(p.getProperty("combat.players", "true")));
+            parsed.setTargetMobs(parseBoolean(p.getProperty("combat.mobs", schema.equals("1") ? "true" : "false")));
+            parsed.setRespectTeams(parseBoolean(p.getProperty("combat.teams", "false")));
+            parsed.setTargetInvisible(parseBoolean(p.getProperty("combat.invisible", "false")));
+            parsed.setRotateAura(parseBoolean(p.getProperty("combat.rotate", "true")));
+            parsed.setCooldown(number(p, "combat.cooldown", 0.92));
+            parsed.setAimSpeed(number(p, "combat.aimSpeed", 25));
+            parsed.setTargetFov(number(p, "combat.fov", 180));
+            parsed.setTotemHealth(number(p, "combat.totemHealth", 12));
+            parsed.setTheme(Theme.valueOf(p.getProperty("visual.theme", "NOVA")));
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid Levrn config; original file preserved", e);
         }
@@ -40,6 +49,16 @@ public final class ConfigStore {
         state.setZoomFov(parsed.zoomFov());
         state.setTargetPlayers(parsed.targetPlayers());
         state.setTheme(parsed.theme());
+        state.setTargetMobs(parsed.targetMobs()); state.setRespectTeams(parsed.respectTeams());
+        state.setTargetInvisible(parsed.targetInvisible()); state.setRotateAura(parsed.rotateAura());
+        state.setCooldown(parsed.cooldown()); state.setAimSpeed(parsed.aimSpeed());
+        state.setTargetFov(parsed.targetFov()); state.setTotemHealth(parsed.totemHealth());
+    }
+
+    private static double number(Properties properties, String key, double fallback) {
+        double result = Double.parseDouble(properties.getProperty(key, Double.toString(fallback)));
+        if (!Double.isFinite(result)) throw new IllegalArgumentException("Invalid number: " + key);
+        return result;
     }
 
     private static boolean parseBoolean(String value) {
@@ -50,12 +69,20 @@ public final class ConfigStore {
 
     public void save(ClientState state) throws IOException {
         Properties p = new Properties();
-        p.setProperty("schema", "1");
+        p.setProperty("schema", "2");
         for (Feature f : state.features()) p.setProperty("module." + f.id, Boolean.toString(f.enabled()));
         p.setProperty("combat.range", Double.toString(state.attackRange()));
         p.setProperty("combat.players", Boolean.toString(state.targetPlayers()));
         p.setProperty("visual.zoomFov", Integer.toString(state.zoomFov()));
         p.setProperty("visual.theme", state.theme().name());
+        p.setProperty("combat.mobs", Boolean.toString(state.targetMobs()));
+        p.setProperty("combat.teams", Boolean.toString(state.respectTeams()));
+        p.setProperty("combat.invisible", Boolean.toString(state.targetInvisible()));
+        p.setProperty("combat.rotate", Boolean.toString(state.rotateAura()));
+        p.setProperty("combat.cooldown", Double.toString(state.cooldown()));
+        p.setProperty("combat.aimSpeed", Double.toString(state.aimSpeed()));
+        p.setProperty("combat.fov", Double.toString(state.targetFov()));
+        p.setProperty("combat.totemHealth", Double.toString(state.totemHealth()));
         Files.createDirectories(path.getParent());
         Path temp = Files.createTempFile(path.getParent(), ".levrn-", ".tmp");
         try {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"os"
@@ -84,7 +85,7 @@ func TestInstallCopiesModsAndCreatesRecoverableBackups(t *testing.T) {
 	if err := finishInstall(cache, mc, []string{profiles}); err != nil {
 		t.Fatal(err)
 	}
-	b, err := os.ReadFile(filepath.Join(mc, "levrn", "1.21.11", "mods", "levrn-0.1.0-alpha.jar"))
+	b, err := os.ReadFile(filepath.Join(mc, "levrn", "1.21.11", "mods", "levrn.jar"))
 	if err != nil || string(b) != "client fixture" {
 		t.Fatal("client not installed", err)
 	}
@@ -98,6 +99,56 @@ func TestInstallCopiesModsAndCreatesRecoverableBackups(t *testing.T) {
 	}
 	if err := finishInstall(cache, mc, []string{profiles}); err != nil {
 		t.Fatal("repeat install failed", err)
+	}
+	var legacy bytes.Buffer
+	writer := zip.NewWriter(&legacy)
+	entry, err := writer.Create("fabric.mod.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = entry.Write([]byte(`{"id":"levrn","version":"0.1.0-alpha"}`))
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	oldPath := filepath.Join(mc, "levrn", "1.21.11", "mods", "levrn-0.1.0-alpha.jar")
+	if err := os.WriteFile(oldPath, legacy.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := finishInstall(cache, mc, []string{profiles}); err != nil {
+		t.Fatal("legacy upgrade failed", err)
+	}
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Fatal("duplicate old client remains")
+	}
+	oldBackups, _ := filepath.Glob(oldPath + ".levrn-backup-*")
+	if len(oldBackups) != 1 {
+		t.Fatal("legacy client backup missing")
+	}
+}
+
+func TestProfileUpgradePreservesCustomSettings(t *testing.T) {
+	mc, _, path := fixture(t)
+	data, err := mergeProfile(path, mc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatal(err)
+	}
+	profile := doc["profiles"].(map[string]any)[profileID].(map[string]any)
+	delete(profile, "levrnManaged")
+	profile["javaArgs"] = "-Xmx4G"
+	data, _ = json.Marshal(doc)
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := mergeProfile(path, mc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(updated, []byte("-Xmx4G")) {
+		t.Fatal("custom JVM settings lost during upgrade")
 	}
 }
 

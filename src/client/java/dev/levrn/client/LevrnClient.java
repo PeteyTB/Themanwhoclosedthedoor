@@ -9,6 +9,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -24,10 +26,12 @@ public final class LevrnClient implements ClientModInitializer {
     public static final ClientState STATE = new ClientState();
     private static final ConfigStore CONFIG = new ConfigStore(
         FabricLoader.getInstance().getConfigDir().resolve("levrn/profile.properties"));
-    private final ModuleRuntime runtime = new ModuleRuntime(STATE);
+    static final ModuleRuntime runtime = new ModuleRuntime(STATE);
     private KeyMapping menu, panic, zoom;
     private static String status = "Ready";
     private static boolean initialized;
+    private int uiSmokeTicks;
+    private boolean uiSmokeOpened;
 
     @Override public synchronized void onInitializeClient() {
         if (initialized) return;
@@ -36,10 +40,26 @@ public final class LevrnClient implements ClientModInitializer {
         menu = key("menu", GLFW.GLFW_KEY_RIGHT_SHIFT);
         panic = key("panic", GLFW.GLFW_KEY_END);
         zoom = key("zoom", GLFW.GLFW_KEY_C);
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            if (screen instanceof net.minecraft.client.gui.screens.TitleScreen || screen instanceof LevrnScreen) {
+                ScreenKeyboardEvents.afterKeyPress(screen).register((active, input) -> {
+                    if (menu.matches(input)) {
+                        if (active instanceof LevrnScreen) client.setScreen(null);
+                        else client.setScreen(new LevrnScreen());
+                    } else if (panic.matches(input) && active instanceof LevrnScreen workspace) {
+                        panic(); workspace.requestRefresh();
+                    }
+                });
+            }
+        });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (Boolean.getBoolean("levrn.uiSmoke") && !uiSmokeOpened && ++uiSmokeTicks >= 100
+                && client.screen instanceof net.minecraft.client.gui.screens.TitleScreen) {
+                uiSmokeOpened = true; client.setScreen(new LevrnScreen());
+            }
             while (menu.consumeClick()) {
                 if (client.screen instanceof LevrnScreen) client.setScreen(null);
-                else if (client.screen == null) client.setScreen(new LevrnScreen());
+                else if (client.screen == null || client.screen instanceof net.minecraft.client.gui.screens.TitleScreen) client.setScreen(new LevrnScreen());
             }
             while (panic.consumeClick()) {
                 STATE.disableAll(); runtime.restore(client); save();
@@ -55,7 +75,7 @@ public final class LevrnClient implements ClientModInitializer {
             runtime.restore(client);
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("Levrn 0.1.0-alpha initialized for Minecraft 1.21.11");
+        LOG.info("Levrn 0.2.0-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {
@@ -64,6 +84,7 @@ public final class LevrnClient implements ClientModInitializer {
     }
 
     public static String status() { return status; }
+    public static String combatStatus() { return runtime.combatStatus; }
     public static void save() {
         try { CONFIG.save(STATE); status = "Profile saved"; }
         catch (IOException e) { status = "Save failed: see log"; LOG.error("Could not save Levrn profile", e); }

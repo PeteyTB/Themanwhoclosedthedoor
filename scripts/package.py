@@ -12,7 +12,8 @@ import zipfile
 
 root = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(root)
-client = root / 'build/libs/levrn-0.1.0-alpha.jar'
+version = next(line.split('=', 1)[1].strip() for line in (root / 'gradle.properties').read_text().splitlines() if line.startswith('mod_version='))
+client = root / f'build/libs/levrn-{version}.jar'
 if not client.is_file():
     raise SystemExit('Run the full Gradle build first; no client JAR found.')
 with zipfile.ZipFile(client) as jar:
@@ -49,6 +50,6 @@ env = {**os.environ, 'GOCACHE': str(root / 'build/go-cache'), 'GOTOOLCHAIN': 'lo
 subprocess.run([go, 'test', './...'], cwd=root / 'launcher', env=env, check=True)
 out = root / 'build/dist'
 out.mkdir(parents=True, exist_ok=True)
-subprocess.run([go, 'build', '-trimpath', '-ldflags=-s -w', '-o', str(out / 'Levrn.exe'), '.'], cwd=root / 'launcher', env={**env, 'GOOS': 'windows', 'GOARCH': 'amd64'}, check=True)
-subprocess.run([go, 'build', '-trimpath', '-o', str(out / 'levrn-linux'), '.'], cwd=root / 'launcher', env={**env, 'GOOS': 'linux', 'GOARCH': 'amd64'}, check=True)
+subprocess.run([go, 'build', '-trimpath', f'-ldflags=-s -w -X main.clientVersion={version}', '-o', str(out / 'Levrn.exe'), '.'], cwd=root / 'launcher', env={**env, 'GOOS': 'windows', 'GOARCH': 'amd64'}, check=True)
+subprocess.run([go, 'build', '-trimpath', f'-ldflags=-X main.clientVersion={version}', '-o', str(out / 'levrn-linux'), '.'], cwd=root / 'launcher', env={**env, 'GOOS': 'linux', 'GOARCH': 'amd64'}, check=True)
 print('Built build/dist/Levrn.exe (Windows x64) and build/dist/levrn-linux (test host)')
