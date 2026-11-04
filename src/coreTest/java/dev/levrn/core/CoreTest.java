@@ -85,6 +85,37 @@ public final class CoreTest {
             check(copy.targetMobs() && copy.respectTeams() && !copy.rotateAura() && copy.aimSpeed()==35 && copy.targetFov()==120 && copy.totemHealth()==8, "extended combat settings round trip");
             Files.writeString(path,"schema=1\ncombat.players=false\nvisual.theme=DUSK\n");store.load(copy);
             check(!copy.targetPlayers() && copy.targetMobs() && copy.theme()==Theme.DUSK, "legacy profile preserves explicit targeting and theme");
+            Motion lowFps = new Motion(0), highFps = new Motion(0);
+            for (int i=0;i<30;i++) lowFps.step(1,1.0/30,8);
+            for (int i=0;i<144;i++) highFps.step(1,1.0/144,8);
+            check(Math.abs(lowFps.value()-highFps.value())<1e-10,"motion is frame-rate independent");
+            for (int i=0;i<200;i++) lowFps.step(0,1.0/60,18);
+            check(lowFps.value()==0,"closing animation settles exactly");
+            lowFps.snap(1); check(lowFps.value()==1,"reduced motion can snap directly");
+            try { lowFps.step(0,Double.NaN,18);throw new AssertionError("invalid frame time accepted"); }
+            catch(IllegalArgumentException expected) { check(lowFps.value()==1,"invalid frame time preserves motion state"); }
+            try { lowFps.step(0,-1,18);throw new AssertionError("negative frame time accepted"); }
+            catch(IllegalArgumentException expected) { check(true,"negative frame time rejected"); }
+            check(Motion.mix(0xFF000000,0xFFFFFFFF,0)==0xFF000000 && Motion.mix(0xFF000000,0xFFFFFFFF,1)==0xFFFFFFFF,"color transition endpoints");
+            check(Math.abs(Motion.quantize(1.034,1,3,0.05)-1.05)<1e-8,"slider value quantization");
+            check(Motion.quantize(100,1,3,0.05)==3,"slider value clamping");
+            ActionBudget budget=new ActionBudget();
+            check(budget.take() && !budget.take() && budget.used(),"inventory modules share one transaction budget");
+            budget.nextTick();check(!budget.used() && budget.take(),"inventory budget resets each tick");
+            var targets=java.util.List.of(new TargetRetention.Candidate(1,2.5),new TargetRetention.Candidate(2,2.3));
+            check(TargetRetention.choose(1,targets,true)==1,"target lock ignores small distance jitter");
+            check(TargetRetention.choose(1,targets,false)==2,"nearest-target mode remains available");
+            check(TargetRetention.choose(99,targets,true)==2,"invalid target lock is dropped");
+            check(TargetRetention.choose(1,java.util.List.of(new TargetRetention.Candidate(1,3),new TargetRetention.Candidate(2,2)),true)==2,"substantially closer target replaces lock");
+            check(TargetRetention.choose(1,java.util.List.of(),true)==-1,"empty target set clears lock");
+            copy.setReducedMotion(true);copy.setMotionSpeed(2);copy.setArmorUpgrade(false);copy.setPreserveElytra(false);copy.setInventoryInterval(7);copy.setStickyTargets(false);copy.setWindowX(.2);copy.setWindowY(.8);copy.setReplenishBelow(14);
+            store.save(copy);var motionCopy=new ClientState();store.load(motionCopy);
+            check(motionCopy.reducedMotion() && motionCopy.motionSpeed()==2 && !motionCopy.armorUpgrade() && !motionCopy.preserveElytra() && !motionCopy.stickyTargets() && motionCopy.inventoryInterval()==7 && motionCopy.replenishBelow()==14,"new subsystem settings round trip");
+            check(motionCopy.windowX()==.2 && motionCopy.windowY()==.8,"dragged window position persists");
+            motionCopy.reset();check(!motionCopy.reducedMotion() && motionCopy.motionSpeed()==1 && motionCopy.windowX()==.5 && motionCopy.armorUpgrade(),"new subsystem defaults reset");
+            Files.writeString(path,"schema=3\nui.motionSpeed=NaN\n");
+            try { store.load(motionCopy);throw new AssertionError("invalid animation speed accepted"); }
+            catch(java.io.IOException expected) { check(motionCopy.motionSpeed()==1,"malformed animation profile is transactional"); }
             System.out.println("PASS: " + passed + " core behavior checks");
         } finally {
             try (var files = Files.walk(dir)) {

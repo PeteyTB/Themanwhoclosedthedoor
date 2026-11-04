@@ -46,3 +46,17 @@ tasks.register('coreTest', JavaExec) {
     mainClass = 'dev.levrn.core.CoreTest'
 }
 tasks.named('check') { dependsOn coreTest }
+
+// Opt-in local client/server integration tests; their classes/resources are excluded from release JARs.
+fabricApi.configureTests {
+    createSourceSet = true
+    modId = 'levrn-localtest'
+    enableGameTests = false
+    enableClientGameTests = true
+}
+sourceSets.configureEach {
+    if (name == 'gametest') {
+        compileClasspath += sourceSets.client.output + sourceSets.client.compileClasspath
+        runtimeClasspath += sourceSets.client.output + sourceSets.client.runtimeClasspath
+    }
+}

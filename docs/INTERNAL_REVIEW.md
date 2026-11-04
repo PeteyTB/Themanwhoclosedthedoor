@@ -22,15 +22,15 @@ This review inspects the supplied program contents. Decompiled text is a reconst
 
 ## What changed in Levrn
 
-- 30 implemented modules, up from 10. No planned module is shown as a working toggle.
+- 31 implemented modules, up from 10. The latest additions and selection rationale are in the [Kuro/Prestige review](KURO_PRESTIGE_REVIEW.md). No planned module is shown as a working toggle.
 - Compact category lanes, continuous scrolling, category spreading, multi-module global queries (`aura, sprint`), a module inspector, Rajdhani typography (OFL) and a Nova theme.
 - PvP preset and explicit filters; team filtering is optional. Hitbox distance and visible rotation precede attacks. Cooldown follows the held weapon. Diagnostics report why an attack is waiting and count sent attacks without claiming server-confirmed hits.
-- New combat helpers: Aim Assist, Auto Weapon, Shield Breaker and Auto Totem. Auto Armor currently fills empty slots; it does not rank or replace worn armor. Auto Jump uses vanilla auto jump. Auto Respawn uses the normal respawn request.
+- New combat helpers: Aim Assist, Auto Weapon, Shield Breaker and Auto Totem. Auto Armor can upgrade worn armor using base armor, toughness and durability; it can preserve an equipped Elytra. Auto Replenish refills remembered hotbar stacks. Auto Jump uses vanilla auto jump. Auto Respawn uses the normal respawn request.
 - Additional visual/HUD modules: stable FOV, no bob/hurt tilt/nausea/darkness intensity, armor durability, speed, latency, local clock, compass, keystrokes and potion effects.
 
 ## Remaining parity
 
-Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed/scaffold, inventory coordination, ESP/render pipelines, crystal/anchor/mace/spear sequences, historical packet exploit modules and verified server-specific behavior require separate implementation and testing. The table below records source inventory without suggesting those entries work in Levrn.
+Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed/scaffold, broader inventory management, ESP/render pipelines, crystal/anchor/mace/spear sequences, historical packet exploit modules and verified server-specific behavior require separate implementation and testing. The table below records source inventory without suggesting those entries work in Levrn.
 
 ## Crow module inventory
 
@@ -98,7 +98,7 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `MiddleClick` | other | Not implemented |
 | `NameHider` | other | Not implemented |
 | `WaterBucket` | other | Not implemented |
-| `AutoArmour` | player | Auto Armor: empty slots only |
+| `AutoArmour` | player | Auto Armor: base armor/toughness/durability upgrades |
 | `AutoJump` | player | Vanilla Auto Jump |
 | `AutoPlace` | player | Not implemented |
 | `AutoTool` | player | Auto Tool |
@@ -127,7 +127,7 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `Keystrokes` | render | Keystrokes HUD |
 | `Logo` | render | Watermark HUD |
 | `Nametags` | render | Not implemented |
-| `Notifications` | render | Not implemented |
+| `Notifications` | render | Built-in animated module/panic notifications |
 | `PenisESP` | render | Not implemented |
 | `PlayerESP` | render | Not implemented |
 | `Projectiles` | render | Not implemented |
@@ -224,7 +224,7 @@ Full Sigma/Astolfo/Prestige parity is **not implemented**. Advanced flight/speed
 | `ShortWindCharge` | mace | Not implemented |
 | `WindChargeAura` | mace | Not implemented |
 | `AntiTrap` | misc | Not implemented |
-| `AutoArmor` | misc | Auto Armor: empty slots only |
+| `AutoArmor` | misc | Auto Armor: base armor/toughness/durability upgrades |
 | `AutoClicker` | misc | Not implemented |
 | `AutoLoot` | misc | Not implemented |
 | `AutoPickaxe` | misc | Not implemented |
@@ -297,7 +297,7 @@ These filenames come from the community source tree, not a deobfuscation of ever
 - `ActiveMods`: Active Modules HUD
 - `AirWalk`: Not implemented
 - `AntiKnockback`: Not implemented
-- `AutoArmor`: Auto Armor: empty slots only
+- `AutoArmor`: Auto Armor: base armor/toughness/durability upgrades
 - `BlockFly`: Not implemented
 - `BunnyHop`: Not implemented
 - `CameraNoClip`: Not implemented

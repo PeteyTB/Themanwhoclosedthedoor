@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "levrn-localtest",
+  "version": "1.0",
+  "name": "Levrn local integration checks",
+  "environment": "client",
+  "entrypoints": {"fabric-client-gametest": ["dev.levrn.client.LocalServerIntegrationTest"]},
+  "depends": {"levrn": "*", "fabric-api": "*", "minecraft": "1.21.11"}
+}

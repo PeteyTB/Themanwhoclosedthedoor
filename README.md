@@ -2,11 +2,24 @@
 
 An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. This repository is the first alpha foundation for the Levrn project, not a finished commercial release.
 
-**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.2.0-alpha)
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.3.0-alpha)
+
+## Version 0.3: motion and inventory integration
+
+**31 implemented modules.** The newest Kuro and Prestige uploads were inspected internally. The new Prestige is a **1.21.1 engine preview**, not a drop-in upgrade for 1.21.11. See the [evidence and subsystem decisions](docs/KURO_PRESTIGE_REVIEW.md).
+
+- Spring-driven opening/closing, page fades, smooth scrolling, sliding toggle knobs, hover lighting and a traveling category indicator. Circuit/constellation decoration, scan lighting, antialiased panel corners and animated notifications complete the original interface.
+- Drag the Levrn header to reposition the panel. Position, reduced motion and animation speed persist. Settings now use real drag/keyboard sliders; every module has a binding in Minecraft Controls.
+- Auto Armor upgrades worn armor using base armor, toughness and durability, with removal checks and Elytra preservation. New Auto Replenish refills matching low/depleted hotbar stacks. A shared action budget coordinates inventory and slot changes with combat.
+- Stable target selection reduces switching between similarly distant eligible targets. Shield Breaker considers the blocking target's facing direction. Existing weapon cooldown and targeting controls remain available.
+
+[Watch the actual Minecraft motion preview](docs/screenshots/workspace-motion.mp4)
+
+![Actual Minecraft control center](docs/screenshots/settings-window.png)
 
 ## Version 0.2: internal review and redesign
 
-The client now has **30 implemented modules** and a rebuilt multi-category workspace with continuous scrolling, a module inspector, Nova theme, and openly licensed Rajdhani typography. Global search supports several names at once: `aura, sprint`. Selecting a category spreads its modules across the available columns. See [internal code review and complete readable module inventory](docs/INTERNAL_REVIEW.md) for what was recovered from the uploads and which features are still missing.
+Version 0.2 introduced **30 implemented modules** and a rebuilt multi-category workspace with continuous scrolling, a module inspector, Nova theme, and openly licensed Rajdhani typography. Global search supports several names at once: `aura, sprint`. Selecting a category spreads its modules across the available columns. See [internal code review and complete readable module inventory](docs/INTERNAL_REVIEW.md) for what was recovered from the uploads and which features are still missing.
 
 ![Actual Minecraft workspace](docs/screenshots/workspace-window.png)
 
@@ -14,7 +27,7 @@ The client now has **30 implemented modules** and a rebuilt multi-category works
 
 **For existing users whose combat did not target players:** open Settings or the Aura/Trigger inspector and choose **PvP targeting preset**. Existing saved filters are preserved on upgrade. The preset enables player targets and disables shared scoreboard-team filtering. Combat diagnostics show filters, cooldown/alignment state and sent attacks. Attacks now use eye-to-hitbox range and visible rotation; cooldown follows the held item, including swords and axes. This fixes identifiable client-side causes; damage delivery on PvP Legacy remains unverified.
 
-New modules: Aim Assist, Auto Weapon, Shield Breaker, Auto Totem, Auto Armor (empty slots), vanilla Auto Jump, Auto Respawn, No Bob, Stable FOV, No Hurt Cam, No Nausea, No Darkness, Combat Status, Armor HUD, Speed HUD, Ping HUD, Clock, Compass, Keystrokes, Potion HUD. New combat modules start disabled.
+New modules: Aim Assist, Auto Weapon, Shield Breaker, Auto Totem, Auto Armor (expanded in 0.3), vanilla Auto Jump, Auto Respawn, No Bob, Stable FOV, No Hurt Cam, No Nausea, No Darkness, Combat Status, Armor HUD, Speed HUD, Ping HUD, Clock, Compass, Keystrokes, Potion HUD. New combat modules start disabled.
 
 ## LiquidBounce settings research
 
@@ -29,7 +42,7 @@ The official LiquidLauncher and LiquidBounce source trees were inspected. Liquid
 - An atomic local profile with strict validation and transactional loading; a broken profile is reported without replacing the original file on startup.
 - A panic key that disables every module. Module mutations run on the Minecraft client thread.
 
-Controls: **Right Shift** opens the menu, **C** toggles zoom, **End** disables all modules. These mappings can be changed in Minecraft's Controls menu. Settings include attack range, player targeting, zoom FOV, themes, save/reload, and reset. The profile lives at `config/levrn/profile.properties` in the game directory.
+Controls: **Right Shift** opens the menu, **C** toggles zoom, **End** disables all modules. These mappings and individual module bindings can be changed in Minecraft's Controls menu. Settings include attack range, player targeting, zoom FOV, themes, save/reload, and reset. The profile lives at `config/levrn/profile.properties` in the game directory.
 
 ## Windows executable
 
@@ -80,7 +93,7 @@ Use a **Java 21 JDK** (a JRE alone is insufficient).
 ./gradlew runClient
 ```
 
-The intended distributable is `build/libs/levrn-0.2.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
+The intended distributable is `build/libs/levrn-0.3.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
 
 In the managed cloud environment:
 
@@ -95,11 +108,13 @@ The setup helper installs a checksum-verified JDK under `/workspace/.tools`. The
 
 `bash scripts/test-core.sh` exercises the actual pure-Java module registry and profile implementation without Minecraft downloads. `./gradlew check` also runs these checks once Fabric dependencies resolve.
 
-The full Minecraft 1.21.11 Gradle build now passes, including all **46 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
+The full Minecraft 1.21.11 Gradle build now passes, including all **65 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
 
 Go installer checks pass for profile preservation, idempotent updates, malformed/conflicting input, recoverable backups, version checks, and embedded payload extraction. A real end-to-end Fabric installation ran through the Linux build in an isolated temporary Minecraft directory, installed the official libraries and both mod JARs, and preserved the existing profile. Two real JVM attachment tests pass for unsupported and agent-disabled targets.
 
-The Windows PE executable was cross-compiled; **it has not been run on Windows**. The redesigned UI and custom font have been rendered in the actual development client on an isolated software display. Settings and multi-module search were exercised with real input. Combat, inventory automation, real-game runtime attachment, and server-specific behavior remain unverified. Complete the manual checks below before treating this alpha as a release.
+The Windows PE executable was cross-compiled; **it has not been run on Windows**. The redesigned UI, custom font and animations have been rendered in the actual development client on an isolated software display. Settings, numeric sliders, module toggles and multi-module search were exercised with real input; slider changes were confirmed in the saved profile. Combat, inventory automation, real-game runtime attachment, and server-specific behavior remain unverified. This remains a prerelease alpha.
+
+The optional `runClientGameTest` task starts an isolated integrated-server scenario covering target filters, server damage, armor, totems and replenishment. Test classes are excluded from release JARs. Both cloud attempts (including a retry with bounded Java worker threads) timed out during world loading, before any gameplay assertions; neither is a passing server test.
 
 ## Gameplay acceptance checks (pending)
 
@@ -110,4 +125,4 @@ The Windows PE executable was cross-compiled; **it has not been run on Windows**
 5. Change settings, restart, and verify persistence. Press End and confirm every module stops. Test profile reload failures with a copy of the profile.
 6. Confirm HUD elements respect F1 and visually inspect placement at small and large GUI scales.
 
-No anti-cheat bypass or ban-prevention claim has been tested. Commercial licensing, billing, a signed updater, advanced movement/render modules, HUD dragging, per-module keybinds, and performance profiling remain future work. See [internal findings and parity](docs/INTERNAL_REVIEW.md) and [LiquidBounce settings](docs/LIQUIDBOUNCE_REVIEW.md) for source evidence and remaining work.
+No anti-cheat bypass or ban-prevention claim has been tested. Commercial licensing, billing, a signed updater, advanced movement/render modules, HUD dragging and performance profiling remain future work. See [internal findings and parity](docs/INTERNAL_REVIEW.md) and [LiquidBounce settings](docs/LIQUIDBOUNCE_REVIEW.md) for source evidence and remaining work.

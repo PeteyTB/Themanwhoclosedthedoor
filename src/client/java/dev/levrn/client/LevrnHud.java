@@ -17,6 +17,7 @@ final class LevrnHud {
         var state = LevrnClient.STATE;
         int ACCENT = state.theme().accent;
         if (mc.player == null || mc.options.hideGui) return;
+        if (!(mc.screen instanceof LevrnScreen)) Notifications.render(g);
         if (state.enabled("hud")) {
             panel(g, 10, 10, 152, 26);
             g.fill(10, 10, 12, 36, ACCENT);

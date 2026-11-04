@@ -2,6 +2,8 @@ package dev.levrn.client;
 
 import dev.levrn.core.ClientState;
 import dev.levrn.core.TargetPolicy;
+import dev.levrn.core.ActionBudget;
+import dev.levrn.core.TargetRetention;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.player.LocalPlayer;
@@ -30,6 +32,8 @@ import java.util.Map;
 final class ModuleRuntime {
     private final ClientState state;
     private final Map<OptionInstance<?>, Object> options = new HashMap<>();
+    private final ActionBudget actionBudget = new ActionBudget();
+    private final net.minecraft.world.item.ItemStack[] hotbarTemplates = new net.minecraft.world.item.ItemStack[9];
     private boolean sprintOwned, respawnRequested;
     private int previousSlot = -1, autoSelectedSlot = -1, inventoryDelay;
     private LocalPlayer owner;
@@ -40,8 +44,10 @@ final class ModuleRuntime {
     ModuleRuntime(ClientState state) { this.state = state; }
 
     void tick(Minecraft mc) {
-        if (owner != mc.player) { restore(mc); owner = mc.player; respawnRequested = false; }
+        actionBudget.nextTick();
+        if (owner != mc.player) { restore(mc); owner = mc.player; respawnRequested = false; java.util.Arrays.fill(hotbarTemplates,null); }
         if (mc.player == null || mc.level == null) { restore(mc); combatStatus = "Join a world to use combat"; return; }
+        trackHotbar(mc);
         option(mc.options.gamma(), state.enabled("brightness"), 1.0);
         option(mc.options.fov(), state.enabled("zoom"), state.zoomFov());
         option(mc.options.autoJump(), state.enabled("auto_jump"), true);
@@ -80,8 +86,10 @@ final class ModuleRuntime {
             }
             selectTool(best);
         } else restoreTool();
+        if (actionBudget.used()) { combatStatus = "Inventory change - synchronizing"; currentTarget = null; return; }
         boolean attacking = state.enabled("aura") || state.enabled("trigger");
         boolean assisting = state.enabled("aim_assist") && mc.options.keyAttack.isDown();
+        LivingEntity previousTarget = currentTarget;
         currentTarget = null;
         if (!attacking && !assisting) { combatStatus = "Combat idle"; return; }
         if (mc.gameMode == null || mc.player.isUsingItem() || mining) {
@@ -93,9 +101,11 @@ final class ModuleRuntime {
             if (rejection.isEmpty()) currentTarget = living;
         }
         if (currentTarget == null && (state.enabled("aura") || assisting)) {
-            currentTarget = mc.level.getEntitiesOfClass(LivingEntity.class,
-                mc.player.getBoundingBox().inflate(state.attackRange() + 1), entity -> rejection(mc, entity).isEmpty())
-                .stream().min(Comparator.comparingDouble(entity -> distance(mc, entity))).orElse(null);
+            var eligible = mc.level.getEntitiesOfClass(LivingEntity.class,
+                mc.player.getBoundingBox().inflate(state.attackRange() + 1), entity -> rejection(mc, entity).isEmpty());
+            int selectedId = TargetRetention.choose(previousTarget == null ? -1 : previousTarget.getId(),
+                eligible.stream().map(entity -> new TargetRetention.Candidate(entity.getId(),distance(mc,entity))).toList(),state.stickyTargets());
+            currentTarget = eligible.stream().filter(entity -> entity.getId() == selectedId).findFirst().orElse(null);
         }
         if (currentTarget == null) {
             if (!state.targetPlayers() && !state.targetMobs()) combatStatus = "All target types OFF - open combat settings";
@@ -128,25 +138,81 @@ final class ModuleRuntime {
         if (state.enabled("auto_totem") && mc.player.getHealth() + mc.player.getAbsorptionAmount() <= state.totemHealth()
             && !mc.player.getOffhandItem().is(Items.TOTEM_OF_UNDYING)) {
             for (int slot = 0; slot < 36; slot++) if (mc.player.getInventory().getItem(slot).is(Items.TOTEM_OF_UNDYING)) {
+                if (!actionBudget.take()) return;
                 mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId, menuSlot(slot), 40, ClickType.SWAP, mc.player);
-                inventoryDelay = 5; return;
+                inventoryDelay = (int)state.inventoryInterval(); return;
+            }
+        }
+        if (state.enabled("auto_replenish")) {
+            for (int hotbar=0;hotbar<9;hotbar++) {
+                var current = mc.player.getInventory().getItem(hotbar);
+                var template = hotbarTemplates[hotbar];
+                if (template == null || template.isEmpty() || template.getMaxStackSize() <= 1
+                    || !current.isEmpty() && current.getCount() > state.replenishBelow()) continue;
+                for (int source=9;source<36;source++) {
+                    var carried = mc.player.getInventory().getItem(source);
+                    if (carried.isEmpty() || !net.minecraft.world.item.ItemStack.isSameItemSameComponents(carried,template)) continue;
+                    if (!actionBudget.take()) return;
+                    int container = mc.player.inventoryMenu.containerId;
+                    if (current.isEmpty()) mc.gameMode.handleInventoryMouseClick(container,source,hotbar,ClickType.SWAP,mc.player);
+                    else {
+                        mc.gameMode.handleInventoryMouseClick(container,source,0,ClickType.PICKUP,mc.player);
+                        mc.gameMode.handleInventoryMouseClick(container,hotbar+36,0,ClickType.PICKUP,mc.player);
+                        mc.gameMode.handleInventoryMouseClick(container,source,0,ClickType.PICKUP,mc.player);
+                    }
+                    inventoryDelay = (int)state.inventoryInterval(); return;
+                }
             }
         }
         if (state.enabled("auto_armor")) {
-            for (int slot = 0; slot < 36; slot++) {
-                var item = mc.player.getInventory().getItem(slot);
-                var equippable = item.get(DataComponents.EQUIPPABLE);
-                if (equippable == null || !(equippable.slot() == EquipmentSlot.HEAD || equippable.slot() == EquipmentSlot.CHEST
-                    || equippable.slot() == EquipmentSlot.LEGS || equippable.slot() == EquipmentSlot.FEET)) continue;
-                if (!mc.player.getItemBySlot(equippable.slot()).isEmpty()) continue;
-                mc.gameMode.handleInventoryMouseClick(mc.player.inventoryMenu.containerId, menuSlot(slot), 0, ClickType.QUICK_MOVE, mc.player);
-                inventoryDelay = 5; return;
+            EquipmentSlot[] armor = {EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET};
+            for (int part = 0; part < armor.length; part++) {
+                EquipmentSlot equipmentSlot = armor[part];
+                var worn = mc.player.getItemBySlot(equipmentSlot);
+                if (equipmentSlot == EquipmentSlot.CHEST && state.preserveElytra() && worn.is(Items.ELYTRA)) continue;
+                if (!worn.isEmpty() && !state.armorUpgrade()) continue;
+                var destination = mc.player.inventoryMenu.getSlot(5+part);
+                if (!destination.mayPickup(mc.player)) continue;
+                int best = -1; double bestScore = armorScore(worn,equipmentSlot);
+                for (int slot=0;slot<36;slot++) {
+                    var item = mc.player.getInventory().getItem(slot);
+                    var equippable = item.get(DataComponents.EQUIPPABLE);
+                    if (equippable == null || equippable.slot() != equipmentSlot || !destination.mayPlace(item)) continue;
+                    double score = armorScore(item,equipmentSlot);
+                    if (score > bestScore + 0.0001) { best = slot; bestScore = score; }
+                }
+                if (best < 0 || !actionBudget.take()) continue;
+                int container = mc.player.inventoryMenu.containerId, from = menuSlot(best);
+                if (worn.isEmpty()) mc.gameMode.handleInventoryMouseClick(container,from,0,ClickType.QUICK_MOVE,mc.player);
+                else {
+                    // A normal cursor swap; mayPickup enforces binding/removal restrictions.
+                    mc.gameMode.handleInventoryMouseClick(container,from,0,ClickType.PICKUP,mc.player);
+                    mc.gameMode.handleInventoryMouseClick(container,5+part,0,ClickType.PICKUP,mc.player);
+                    mc.gameMode.handleInventoryMouseClick(container,from,0,ClickType.PICKUP,mc.player);
+                }
+                inventoryDelay = (int)state.inventoryInterval(); return;
             }
         }
     }
+    private void trackHotbar(Minecraft mc) {
+        for (int slot=0;slot<9;slot++) {
+            var item = mc.player.getInventory().getItem(slot);
+            if (!state.enabled("auto_replenish")) hotbarTemplates[slot] = null;
+            else if (!item.isEmpty() || mc.screen != null) hotbarTemplates[slot] = item.copyWithCount(1);
+        }
+    }
+    private double armorScore(net.minecraft.world.item.ItemStack item,EquipmentSlot slot) {
+        if (item.isEmpty()) return -1;
+        var modifiers = item.getOrDefault(DataComponents.ATTRIBUTE_MODIFIERS,ItemAttributeModifiers.EMPTY);
+        double armor = modifiers.compute(Attributes.ARMOR,0,slot);
+        double toughness = modifiers.compute(Attributes.ARMOR_TOUGHNESS,0,slot);
+        double durability = item.isDamageableItem() ? (item.getMaxDamage()-item.getDamageValue())/(double)Math.max(1,item.getMaxDamage()) : 1;
+        return armor*100 + toughness*10 + durability;
+    }
     private int menuSlot(int slot) { return slot < 9 ? slot + 36 : slot; }
     private boolean chooseWeapon(Minecraft mc, LivingEntity target) {
-        boolean axe = state.enabled("shield_breaker") && target.isBlocking();
+        boolean axe = state.enabled("shield_breaker") && target.isBlocking()
+            && target.getLookAngle().multiply(1,0,1).dot(mc.player.position().subtract(target.position()).multiply(1,0,1).normalize()) > 0;
         int best = mc.player.getInventory().getSelectedSlot();
         double bestDamage = -1;
         for (int slot = 0; slot < 9; slot++) {
@@ -157,7 +223,10 @@ final class ModuleRuntime {
                 .compute(Attributes.ATTACK_DAMAGE, 1, EquipmentSlot.MAINHAND);
             if (damage > bestDamage) { bestDamage = damage; best = slot; }
         }
-        if (best != mc.player.getInventory().getSelectedSlot()) { mc.player.getInventory().setSelectedSlot(best); return true; }
+        if (best != mc.player.getInventory().getSelectedSlot()) {
+            if (actionBudget.take()) mc.player.getInventory().setSelectedSlot(best);
+            return true;
+        }
         return false;
     }
     private String rejection(Minecraft mc, LivingEntity target) {
@@ -196,21 +265,26 @@ final class ModuleRuntime {
     @SuppressWarnings("unchecked") private <T> void restoreOption(OptionInstance<T> option) { option.set((T)options.remove(option)); }
     void restore(Minecraft mc) {
         for (var option : java.util.List.copyOf(options.keySet())) restoreOption(option);
-        restoreSprint(mc); restoreTool(); currentTarget = null;
+        restoreSprint(mc); restoreTool(true); currentTarget = null;
     }
     private void restoreSprint(Minecraft mc) {
         if (sprintOwned && owner != null && !mc.options.keySprint.isDown()) owner.setSprinting(false);
         sprintOwned = false;
     }
     private void selectTool(int slot) {
-        if (slot != owner.getInventory().getSelectedSlot()) {
+        if (slot != owner.getInventory().getSelectedSlot() && actionBudget.take()) {
             if (previousSlot < 0) previousSlot = owner.getInventory().getSelectedSlot();
             owner.getInventory().setSelectedSlot(slot); autoSelectedSlot = slot;
         }
     }
     private void restoreTool() {
-        if (previousSlot >= 0 && owner != null && owner.getInventory().getSelectedSlot() == autoSelectedSlot)
+        restoreTool(false);
+    }
+    private void restoreTool(boolean immediate) {
+        if (previousSlot >= 0 && owner != null && owner.getInventory().getSelectedSlot() == autoSelectedSlot) {
+            if (!immediate && !actionBudget.take()) return;
             owner.getInventory().setSelectedSlot(previousSlot);
+        }
         previousSlot = -1; autoSelectedSlot = -1;
     }
 }

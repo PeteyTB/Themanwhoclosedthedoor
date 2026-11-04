@@ -14,7 +14,8 @@ public final class ClientState {
         new Feature("sprint", "Sprint", "Sprint while walking forward when food allows.", Category.MOVEMENT, false),
         new Feature("auto_jump", "Auto Jump", "Enable vanilla obstacle auto jump and restore it on disable.", Category.MOVEMENT, false),
         new Feature("auto_tool", "Auto Tool", "Select the fastest hotbar tool while mining.", Category.PLAYER, false),
-        new Feature("auto_armor", "Auto Armor", "Fill empty armor slots from carried equipment.", Category.PLAYER, false),
+        new Feature("auto_armor", "Auto Armor", "Equip stronger carried armor, respecting removal rules and Elytra.", Category.PLAYER, false),
+        new Feature("auto_replenish", "Auto Replenish", "Refill matching hotbar stacks and restore depleted items from inventory.", Category.PLAYER, false),
         new Feature("auto_respawn", "Auto Respawn", "Request respawn after the normal death delay.", Category.PLAYER, false),
         new Feature("zoom", "Zoom", "A configurable narrow field of view. Toggle with C.", Category.VISUAL, false),
         new Feature("brightness", "Brightness", "Set vanilla brightness to maximum, then restore it.", Category.VISUAL, false),
@@ -41,6 +42,10 @@ public final class ClientState {
     private boolean targetPlayers = true, targetMobs = false, respectTeams, targetInvisible, rotateAura = true;
     private double cooldown = 0.92, aimSpeed = 25, targetFov = 180, totemHealth = 12;
     private Theme theme = Theme.NOVA;
+    private boolean reducedMotion, stickyTargets = true, armorUpgrade = true, preserveElytra = true;
+    private double motionSpeed = 1.0, inventoryInterval = 4;
+    private double windowX = 0.5, windowY = 0.5;
+    private int replenishBelow = 8;
 
     public List<Feature> features() { return features; }
     public Feature feature(String id) {
@@ -74,6 +79,24 @@ public final class ClientState {
     public void setTotemHealth(double value) { if (Double.isFinite(value)) totemHealth = Math.clamp(value, 1, 40); }
     public Theme theme() { return theme; }
     public void setTheme(Theme value) { theme = java.util.Objects.requireNonNull(value); }
+    public boolean reducedMotion() { return reducedMotion; }
+    public void setReducedMotion(boolean value) { reducedMotion = value; }
+    public boolean stickyTargets() { return stickyTargets; }
+    public void setStickyTargets(boolean value) { stickyTargets = value; }
+    public boolean armorUpgrade() { return armorUpgrade; }
+    public void setArmorUpgrade(boolean value) { armorUpgrade = value; }
+    public boolean preserveElytra() { return preserveElytra; }
+    public void setPreserveElytra(boolean value) { preserveElytra = value; }
+    public double motionSpeed() { return motionSpeed; }
+    public void setMotionSpeed(double value) { if (Double.isFinite(value)) motionSpeed = Math.clamp(value, 0.5, 2.5); }
+    public double inventoryInterval() { return inventoryInterval; }
+    public void setInventoryInterval(double value) { if (Double.isFinite(value)) inventoryInterval = Math.clamp(Math.round(value), 2, 10); }
+    public double windowX() { return windowX; }
+    public double windowY() { return windowY; }
+    public void setWindowX(double value) { if (Double.isFinite(value)) windowX = Math.clamp(value, 0, 1); }
+    public void setWindowY(double value) { if (Double.isFinite(value)) windowY = Math.clamp(value, 0, 1); }
+    public int replenishBelow() { return replenishBelow; }
+    public void setReplenishBelow(int value) { replenishBelow = Math.clamp(value,1,32); }
     public List<Feature> search(Category category, String query) {
         String needle = query.strip().toLowerCase(Locale.ROOT);
         return features.stream().filter(f -> category == null || f.category == category)
@@ -92,5 +115,8 @@ public final class ClientState {
         attackRange = 3.0; zoomFov = 30; targetPlayers = true; targetMobs = false; respectTeams = false;
         targetInvisible = false; rotateAura = true; cooldown = 0.92; aimSpeed = 25; targetFov = 180; totemHealth = 12;
         theme = Theme.NOVA;
+        reducedMotion = false; stickyTargets = true; armorUpgrade = true; preserveElytra = true; motionSpeed = 1; inventoryInterval = 4;
+        windowX = 0.5; windowY = 0.5;
+        replenishBelow = 8;
     }
 }

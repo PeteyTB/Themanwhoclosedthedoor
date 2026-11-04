@@ -32,6 +32,8 @@ public final class LevrnClient implements ClientModInitializer {
     private static boolean initialized;
     private int uiSmokeTicks;
     private boolean uiSmokeOpened;
+    private static int saveTicks;
+    private static final java.util.Map<String,KeyMapping> MODULE_KEYS = new java.util.LinkedHashMap<>();
 
     @Override public synchronized void onInitializeClient() {
         if (initialized) return;
@@ -40,11 +42,13 @@ public final class LevrnClient implements ClientModInitializer {
         menu = key("menu", GLFW.GLFW_KEY_RIGHT_SHIFT);
         panic = key("panic", GLFW.GLFW_KEY_END);
         zoom = key("zoom", GLFW.GLFW_KEY_C);
+        for (var feature : STATE.features()) if (!feature.id.equals("zoom")) MODULE_KEYS.put(feature.id,key("module."+feature.id,GLFW.GLFW_KEY_UNKNOWN));
+        MODULE_KEYS.put("zoom",zoom);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof net.minecraft.client.gui.screens.TitleScreen || screen instanceof LevrnScreen) {
                 ScreenKeyboardEvents.afterKeyPress(screen).register((active, input) -> {
                     if (menu.matches(input)) {
-                        if (active instanceof LevrnScreen) client.setScreen(null);
+                        if (active instanceof LevrnScreen) active.onClose();
                         else client.setScreen(new LevrnScreen());
                     } else if (panic.matches(input) && active instanceof LevrnScreen workspace) {
                         panic(); workspace.requestRefresh();
@@ -53,29 +57,32 @@ public final class LevrnClient implements ClientModInitializer {
             }
         });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (saveTicks > 0 && --saveTicks == 0) save();
             if (Boolean.getBoolean("levrn.uiSmoke") && !uiSmokeOpened && ++uiSmokeTicks >= 100
                 && client.screen instanceof net.minecraft.client.gui.screens.TitleScreen) {
                 uiSmokeOpened = true; client.setScreen(new LevrnScreen());
             }
             while (menu.consumeClick()) {
-                if (client.screen instanceof LevrnScreen) client.setScreen(null);
+                if (client.screen instanceof LevrnScreen workspace) workspace.onClose();
                 else if (client.screen == null || client.screen instanceof net.minecraft.client.gui.screens.TitleScreen) client.setScreen(new LevrnScreen());
             }
             while (panic.consumeClick()) {
-                STATE.disableAll(); runtime.restore(client); save();
+                panic(); runtime.restore(client);
             }
             while (zoom.consumeClick()) {
-                if (client.screen == null) { STATE.feature("zoom").toggle(); save(); }
+                if (client.screen == null) toggle(STATE.feature("zoom"));
             }
+            MODULE_KEYS.forEach((id,binding) -> { while (binding.consumeClick()) if (client.screen == null) toggle(STATE.feature(id)); });
             runtime.tick(client);
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
             Identifier.fromNamespaceAndPath("levrn", "overlay"), (graphics, delta) -> LevrnHud.render(graphics));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             runtime.restore(client);
+            flushSave();
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("Levrn 0.2.0-alpha initialized for Minecraft 1.21.11");
+        LOG.info("Levrn 0.3.0-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {
@@ -86,6 +93,7 @@ public final class LevrnClient implements ClientModInitializer {
     public static String status() { return status; }
     public static String combatStatus() { return runtime.combatStatus; }
     public static void save() {
+        saveTicks = 0;
         try { CONFIG.save(STATE); status = "Profile saved"; }
         catch (IOException e) { status = "Save failed: see log"; LOG.error("Could not save Levrn profile", e); }
     }
@@ -97,5 +105,15 @@ public final class LevrnClient implements ClientModInitializer {
     }
     public static void panic() {
         STATE.disableAll(); save();
+        Notifications.add("ALL SYSTEMS DISABLED","Every Levrn module has been stopped");
+    }
+    public static void toggle(dev.levrn.core.Feature feature) {
+        feature.toggle(); save(); Notifications.add(feature.name,feature.enabled() ? "ONLINE" : "OFFLINE");
+    }
+    public static void scheduleSave() { saveTicks = 8; status = "Saving changes..."; }
+    public static void flushSave() { if (saveTicks > 0) save(); }
+    public static String keyLabel(String id) {
+        KeyMapping mapping = MODULE_KEYS.get(id);
+        return mapping == null ? "Unassigned" : mapping.getTranslatedKeyMessage().getString();
     }
 }
