@@ -2,6 +2,8 @@
 
 An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. This repository is the first alpha foundation for the Levrn project, not a finished commercial release.
 
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/f5588a1496d41497f5b5540db60d650b7e389c1e/downloads/Levrn.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.1.0-alpha)
+
 ## Current implementation
 
 - Searchable category/card interface with keyboard-accessible controls and three original themes: Dusk, Glacier, Ember.
