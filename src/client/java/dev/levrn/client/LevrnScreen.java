@@ -65,7 +65,7 @@ public final class LevrnScreen extends Screen {
     private int columns, scroll, maxScroll;
     // Inspector scroll state
     private int inspScroll, inspMaxScroll, inspScrollTarget;
-    private EditBox search;
+    private LevrnSearchBox search;
     private WorkspaceLayout.Result layout = new WorkspaceLayout.Result(List.of(), 0);
     private final List<Control> controls = new ArrayList<>();
     private record Numeric(double min, double max, double step, DoubleSupplier getter, DoubleConsumer setter, String suffix, double scale) { }
@@ -84,8 +84,9 @@ public final class LevrnScreen extends Screen {
     private boolean inputReady() { return !closing && (LevrnClient.STATE.reducedMotion() || opening.value() > 0.85 && page.value() > 0.85); }
     private void rebuildPreservingInput() {
         boolean focused = search != null && search.isFocused(); int cursor = search == null ? 0 : search.getCursorPosition();
+        int anchor=search==null ? 0 : search.anchor();
         rebuildWidgets();
-        if (focused && search != null && !settings && !hudStudio) { setFocused(search); search.setCursorPosition(cursor); }
+        if (focused && search != null && !settings && !hudStudio) { setFocused(search); search.setCursorPosition(cursor);search.setHighlightPos(anchor); }
     }
 
     // HUD element definitions for HUD Studio
@@ -98,6 +99,10 @@ public final class LevrnScreen extends Screen {
 
     public LevrnScreen() { super(Component.literal("LVERN workspace")); }
     public void requestRefresh() { refresh = true; }
+    private void updateQuery(String value) {
+        if(query.equals(value)) return;
+        query=value;scroll=scrollTarget=0;scrolling.snap(0);panelScroll.clear();requestRefresh();
+    }
 
     @Override protected void init() {
         descriptions.clear();
@@ -110,7 +115,7 @@ public final class LevrnScreen extends Screen {
         left=Math.clamp((int)(LevrnClient.STATE.windowX()*(available-panelWidth)),8,Math.max(8,available-panelWidth-8));top=Math.clamp((int)(LevrnClient.STATE.windowY()*(canvasHeight-panelHeight)),36,Math.max(36,canvasHeight-panelHeight-8));
         sidebarWidth=100;topBarHeight=40;
         boolean hasInspector=selected!=null || settings;
-        if(hasInspector) {centerWidth=Math.min(150,(panelWidth-sidebarWidth-24)/3);inspectorX=left+sidebarWidth+centerWidth+16;inspectorWidth=panelWidth-sidebarWidth-centerWidth-28;}
+        if(hasInspector) {centerWidth=Math.min(158,(panelWidth-sidebarWidth-24)/3);inspectorX=left+sidebarWidth+centerWidth+16;inspectorWidth=panelWidth-sidebarWidth-centerWidth-28;}
         else {centerWidth=panelWidth-sidebarWidth-20;inspectorX=0;inspectorWidth=0;}
         sideButton(panelView?"Workspace":"Panels",Math.max(160,available-80),12,72,() -> {panelView=!panelView;resetView();requestRefresh();},false);
         if(panelView) {buildPanels(available);if(dockVisible) buildDock();return;}
@@ -122,9 +127,9 @@ public final class LevrnScreen extends Screen {
         if(!hudStudio) {
             int searchW = Math.min(180, panelWidth - sidebarWidth - 120);
             int searchX = left + panelWidth - searchW - 16;
-            search=new EditBox(font,searchX+2,top+12,searchW,16,Component.literal("Search modules"));
-            search.addFormatter((text,index) -> InterfaceText.component(text).getVisualOrderText());search.setTextShadow(false);search.setBordered(false);search.setTextColor(TEXT_PRIMARY);search.setHint(InterfaceText.component("Search..."));search.setMaxLength(100);search.setValue(query);
-            search.setResponder(value -> {query=value;resetView();refresh=true;});addRenderableWidget(search);
+            search=new LevrnSearchBox(font,searchX+2,top+12,searchW,16,Component.literal("Search modules"));
+            search.setTextShadow(false);search.setBordered(false);search.setTextColor(TEXT_PRIMARY);search.setHint(InterfaceText.component("Search..."));search.setMaxLength(100);search.setValue(query);
+            search.setResponder(this::updateQuery);addRenderableWidget(search);
         }
 
         // Sidebar category buttons
@@ -159,9 +164,9 @@ public final class LevrnScreen extends Screen {
     }
     private void buildPanels(int available) {
         cards.clear();
-        search=new EditBox(font,166,14,Math.max(80,Math.min(220,available-260)),16,Component.literal("Search modules"));
-        search.addFormatter((text,index) -> InterfaceText.component(text).getVisualOrderText());search.setTextShadow(false);search.setBordered(false);search.setHint(InterfaceText.component("Search modules, settings..."));search.setValue(query);
-        search.setResponder(value -> {query=value;requestRefresh();});addRenderableWidget(search);
+        search=new LevrnSearchBox(font,166,14,Math.max(80,Math.min(220,available-260)),16,Component.literal("Search modules"));
+        search.setTextShadow(false);search.setBordered(false);search.setHint(InterfaceText.component("Search modules, settings..."));search.setValue(query);
+        search.setResponder(this::updateQuery);addRenderableWidget(search);
         int count=Math.clamp((available-16)/145,1,4),w=Math.min(185,(available-16-(count-1)*8)/count);
         int[] ys=new int[count];java.util.Arrays.fill(ys,48);int i=0;
         for(Category cat:Category.values()) {

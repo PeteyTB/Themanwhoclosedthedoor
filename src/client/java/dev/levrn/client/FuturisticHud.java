@@ -20,8 +20,8 @@ import java.util.UUID;
  * and enhanced target display.
  */
 final class FuturisticHud {
-    private static final int PANEL=0xB00D0D0F;
-    private static final int TEXT=0xFFD8D8DC,MUTED=0xFF707076,WARN=0xFFFFB454,DANGER=0xFFFF4D6D;
+    private static final int PANEL=0xCE11161E;
+    private static final int TEXT=0xFFE0E6F0,MUTED=0xFF9DA8B9,WARN=0xFFFFB454,DANGER=0xFFFF4D6D;
     private static final int GOOD=0xFF39FF7F;
     private static final EquipmentSlot[] ARMOR={EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET};
     private static final String[] ARMOR_TAG={"HEL","CHE","LEG","BOO"};
@@ -77,8 +77,8 @@ final class FuturisticHud {
         g.fill(19,17,24,22,accent());
         g.fill(19,24,24,26,accentDim());
         text(g,"LVERN",30,15,TEXT);
-        text(g,"v0.5.0",30+HudText.width("LVERN")+8,15,MUTED);
-        text(g,fps,30+HudText.width("LVERN")+8+HudText.width("v0.5.0")+8,15,accent());
+        text(g,"v0.5.1",30+HudText.width("LVERN")+8,15,MUTED);
+        text(g,fps,30+HudText.width("LVERN")+8+HudText.width("v0.5.1")+8,15,accent());
         text(g,server,19,27,MUTED);
     }
 

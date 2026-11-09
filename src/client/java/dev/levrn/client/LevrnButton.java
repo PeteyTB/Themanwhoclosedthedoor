@@ -1,6 +1,5 @@
 package dev.levrn.client;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
@@ -73,18 +72,16 @@ final class LevrnButton extends Button {
         rounded(g, x, y, w, 16, UiMotion.fade(border));
         rounded(g, x + 1, y + 1, w - 2, 14, UiMotion.fade(bg));
 
-        var font = Minecraft.getInstance().font;
-        int badge=severity==null ? 0 : (int)Math.ceil(InterfaceText.width(severity)*.7)+6;
+        int badge=severity==null ? 0 : InterfaceText.badgeWidth(severity)+6;
         String text = InterfaceText.fit(getMessage().getString(), Math.max(1, w - (switchStyle && badge==0 ? 29 : 8)- (badge>0 ? badge+5 : 0)));
-        int textColor = Motion.mix(0xFFA0A0A6, on > 0.5 ? accent : 0xFFD8D8DC, Math.max(on, hover));
+        int textColor = Motion.mix(0xFFB8C0CE, on > 0.5 ? accent : 0xFFD8D8DC, Math.max(on, hover));
         InterfaceText.draw(g, text, switchStyle || leftAligned ? x+5+(badge>0 ? badge+5 : 0) : x + (w - InterfaceText.width(text)) / 2, y + 4,
             UiMotion.fade(textColor));
 
         if(badge>0) {
             boolean warning=severity.equals("WARNING");int bx=x+5;
             g.fill(bx,y+4,bx+badge,y+12,UiMotion.fade(warning?0x992E0D14:0x99525668));
-            g.pose().pushMatrix();g.pose().translate(bx+3,y+4);g.pose().scale(.7f,.7f);
-            InterfaceText.draw(g,severity,0,0,UiMotion.fade(warning?0xFFFF5969:0xFFC5C9D8));g.pose().popMatrix();
+            InterfaceText.badge(g,severity,bx+3,y+4,UiMotion.fade(warning?0xFFFF5969:0xFFC5C9D8));
         }
         if (switchStyle && badge==0) {
             // Clean pill-style toggle switch

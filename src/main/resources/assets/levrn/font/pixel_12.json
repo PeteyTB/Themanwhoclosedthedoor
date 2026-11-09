@@ -1,0 +1,18 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "levrn:lato-regular.ttf",
+      "shift": [
+        0,
+        0
+      ],
+      "size": 12,
+      "oversample": 1
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:default"
+    }
+  ]
+}

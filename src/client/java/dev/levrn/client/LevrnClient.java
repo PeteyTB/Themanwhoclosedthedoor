@@ -119,7 +119,7 @@ public final class LevrnClient implements ClientModInitializer {
             flushSave();
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("LVERN 0.5.0-alpha initialized for Minecraft 1.21.11");
+        LOG.info("LVERN 0.5.1-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {

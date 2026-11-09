@@ -22,7 +22,7 @@ final class NetworkDiagnostics {
         var mc=Minecraft.getInstance();
         if(!mc.isSameThread()) {mc.execute(() -> disconnected(reason));return;}
         var report=new Properties();
-        report.setProperty("version","0.5.0-alpha");report.setProperty("time",Instant.now().toString());
+        report.setProperty("version","0.5.1-alpha");report.setProperty("time",Instant.now().toString());
         report.setProperty("reason",reason.substring(0,Math.min(4096,reason.length())));
         report.setProperty("enabledModules",LevrnClient.STATE.features().stream().filter(f -> f.enabled()).map(f -> f.id).collect(java.util.stream.Collectors.joining(",")));
         report.setProperty("auraRotation",LevrnClient.STATE.auraRotation().name());

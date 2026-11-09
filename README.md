@@ -2,9 +2,19 @@
 
 An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. LVERN Nova adopts the uploaded client source as its baseline and remains a prerelease alpha.
 
-**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.5.0-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.5.0-alpha)
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/download/v0.5.1-alpha/Levrn-0.5.1-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.5.1-alpha)
 
-## Version 0.5: LVERN Nova and the reference interface
+## Version 0.5.1: sharper text at compact sizes
+
+Menu and HUD text now use font strikes rasterized at their final screen-pixel size. Text origins align with the framebuffer pixel grid, independent of Minecraft GUI scale. At the default interface size, labels use **13 px**, badges **10 px**, and HUD text **15 px**. The module list has more room and inactive labels have stronger contrast. The main workspace retains its compact footprint.
+
+Search rendering, mouse placement, selection and clipping now share the same font measurements. Vanilla keyboard navigation and clipboard behavior are retained. Existing interface-size settings continue to control density; text chooses an integer pixel size instead of being stretched fractionally.
+
+![Native-pixel typography at 1080p](docs/screenshots/clarity-workspace.png)
+
+[What changed and verification](docs/UI_CLARITY.md) · [HUD preview](docs/screenshots/clarity-hud.png)
+
+## Version 0.5 (historical): LVERN Nova and the reference interface
 
 The supplied **levrn-nova-complete.zip** is the new source baseline: **42 modules**, the supplied combat behavior, local adaptive matrices, presets and HUD components. Fixed Nova activation, delayed hit observations, per-server model persistence and bounded setting updates. This is local adaptive learning, with transfer between locally saved server profiles; no global learning service is included.
 
@@ -119,7 +129,7 @@ Use a **Java 21 JDK** (a JRE alone is insufficient).
 ./gradlew runClient
 ```
 
-The intended distributable is `build/libs/levrn-0.5.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
+The intended distributable is `build/libs/levrn-0.5.1-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
 
 In the managed cloud environment:
 
