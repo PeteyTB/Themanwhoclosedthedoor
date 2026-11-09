@@ -62,7 +62,8 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
     }
     private void tick(Minecraft mc) {
         ticks++;total++;
-        if(phase!=20 && total>(Boolean.getBoolean("levrn.hudPreview") ? 10000 : 3600)) throw new AssertionError("Local smoke timeout at phase "+phase+" screen "+mc.screen);
+        // Interactive preview time must not consume the subsequent disconnect deadline.
+        if((phase<20 && total>(Boolean.getBoolean("levrn.hudPreview") ? 10000 : 3600)) || (phase==21 && ticks>400)) throw new AssertionError("Local smoke timeout at phase "+phase+" screen "+mc.screen);
         if(mc.player!=null) {mc.setWindowActive(true);jumpPeak=Math.max(jumpPeak,mc.player.getY());}
         var state=LevrnClient.STATE;
         switch(phase) {
@@ -209,6 +210,7 @@ public final class LocalSmokeBootstrap implements ClientModInitializer {
                 }
             }
             case 20 -> {
+                if(ticks==1) total=Math.max(total,Integer.getInteger("levrn.previewElapsedTicks",total));
                 if(ticks==40) {
                     for(String id:new String[]{"aim_assist","auto_weapon","shield_breaker"}) state.feature(id).setEnabled(true);
                     System.out.println("LEVRN_HUD_PREVIEW_READY");
