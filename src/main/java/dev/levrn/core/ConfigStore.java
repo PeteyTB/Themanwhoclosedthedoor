@@ -22,7 +22,7 @@ public final class ConfigStore {
         try {
             try (Reader reader = Files.newBufferedReader(path)) { p.load(reader); }
             String schema = p.getProperty("schema", "1");
-            if (!schema.equals("1") && !schema.equals("2") && !schema.equals("3") && !schema.equals("4")) throw new IllegalArgumentException("Unsupported config schema");
+            if (!schema.equals("1") && !schema.equals("2") && !schema.equals("3") && !schema.equals("4") && !schema.equals("5")) throw new IllegalArgumentException("Unsupported config schema");
             for (Feature f : parsed.features()) {
                 String value = p.getProperty("module." + f.id);
                 if (value != null) f.setEnabled(parseBoolean(value));
@@ -53,6 +53,11 @@ public final class ConfigStore {
             parsed.setAuraRotation(ClientState.AuraRotation.valueOf(p.getProperty("combat.auraRotation","SILENT")));
             parsed.setVelocityHorizontal(number(p,"velocity.horizontal",0)); parsed.setVelocityVertical(number(p,"velocity.vertical",100));
             parsed.setUiScale(number(p,"ui.scale",1.5)); parsed.setEatHunger((int)number(p,"player.eatHunger",14)); parsed.setPlaceDelay((int)number(p,"player.placeDelay",2));
+            parsed.setTotemAlways(parseBoolean(p.getProperty("combat.totemAlways", "false")));
+            parsed.setAdaptiveEnabled(parseBoolean(p.getProperty("module.adaptive",p.getProperty("nova.enabled", "false"))));
+            String presetStr = p.getProperty("combat.preset", "CUSTOM");
+            try { parsed.setCurrentPreset(ClientState.CombatPreset.valueOf(presetStr)); }
+            catch (IllegalArgumentException ignored) { parsed.setCurrentPreset(ClientState.CombatPreset.CUSTOM); }
         } catch (IllegalArgumentException e) {
             throw new IOException("Invalid Levrn config; original file preserved", e);
         }
@@ -72,6 +77,9 @@ public final class ConfigStore {
         state.setReplenishBelow(parsed.replenishBelow());
         state.setAuraRotation(parsed.auraRotation());state.setVelocityHorizontal(parsed.velocityHorizontal());state.setVelocityVertical(parsed.velocityVertical());
         state.setUiScale(parsed.uiScale());state.setEatHunger(parsed.eatHunger());state.setPlaceDelay(parsed.placeDelay());
+        state.setTotemAlways(parsed.totemAlways());
+        state.setAdaptiveEnabled(parsed.adaptiveEnabled());
+        state.setCurrentPreset(parsed.currentPreset());
     }
 
     private static double number(Properties properties, String key, double fallback) {
@@ -88,7 +96,7 @@ public final class ConfigStore {
 
     public void save(ClientState state) throws IOException {
         Properties p = new Properties();
-        p.setProperty("schema", "4");
+        p.setProperty("schema", "5");
         for (Feature f : state.features()) p.setProperty("module." + f.id, Boolean.toString(f.enabled()));
         p.setProperty("combat.range", Double.toString(state.attackRange()));
         p.setProperty("combat.players", Boolean.toString(state.targetPlayers()));
@@ -113,10 +121,13 @@ public final class ConfigStore {
         p.setProperty("combat.auraRotation",state.auraRotation().name());
         p.setProperty("velocity.horizontal",Double.toString(state.velocityHorizontal()));p.setProperty("velocity.vertical",Double.toString(state.velocityVertical()));
         p.setProperty("ui.scale",Double.toString(state.uiScale()));p.setProperty("player.eatHunger",Integer.toString(state.eatHunger()));p.setProperty("player.placeDelay",Integer.toString(state.placeDelay()));
+        p.setProperty("combat.totemAlways", Boolean.toString(state.totemAlways()));
+        p.setProperty("combat.preset", state.currentPreset().name());
+        p.setProperty("nova.enabled", Boolean.toString(state.adaptiveEnabled()));
         Files.createDirectories(path.getParent());
         Path temp = Files.createTempFile(path.getParent(), ".levrn-", ".tmp");
         try {
-            try (Writer writer = Files.newBufferedWriter(temp)) { p.store(writer, "Levrn profile v4"); }
+            try (Writer writer = Files.newBufferedWriter(temp)) { p.store(writer, "Levrn profile v5"); }
             try { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING); }
         } finally { Files.deleteIfExists(temp); }

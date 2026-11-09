@@ -80,3 +80,16 @@ loom.runs {
         vmArg '-Dlevrn.hudPreview=true'
     }
 }
+
+sourceSets {
+    novaTest {
+        compileClasspath += sourceSets.main.output + sourceSets.client.output + sourceSets.client.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.client.output + sourceSets.client.compileClasspath
+    }
+}
+tasks.register('novaTest', JavaExec) {
+    dependsOn clientClasses, novaTestClasses
+    classpath = sourceSets.novaTest.runtimeClasspath
+    mainClass = 'dev.levrn.client.NovaTest'
+}
+tasks.named('check') { dependsOn novaTest }

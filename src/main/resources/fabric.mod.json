@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "levrn",
   "version": "${version}",
-  "name": "Levrn",
+  "name": "LVERN",
   "description": "An original modular Minecraft client. The next chapter.",
   "environment": "client",
   "entrypoints": {

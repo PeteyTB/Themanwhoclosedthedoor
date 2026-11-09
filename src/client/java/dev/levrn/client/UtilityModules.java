@@ -42,7 +42,7 @@ final class UtilityModules {
         }
         if(mc.screen!=null) { finishEating(mc,budget);return; }
         if(state.enabled("auto_walk")) hold(mc.options.keyUp);
-        if(suppressSprint) {mc.options.keySprint.setDown(false);owned.add(mc.options.keySprint);mc.player.setSprinting(false);}
+        if(suppressSprint) {mc.options.keySprint.setDown(false);owned.add(mc.options.keySprint);if(mc.player.isSprinting()) mc.player.setSprinting(false);}
         else if(state.enabled("sprint") && mc.options.keyUp.isDown() && !mc.player.isCrouching() && !mc.player.isUsingItem()) {
             if(!mc.player.isSprinting()) {sprintOwned=true;sprintOwner=mc.player;}
             hold(mc.options.keySprint);
@@ -77,7 +77,7 @@ final class UtilityModules {
         owned.add(mc.options.keyUp);owned.add(mc.options.keyDown);owned.add(mc.options.keyLeft);owned.add(mc.options.keyRight);
     }
     private void restoreSprint(Minecraft mc) {
-        if(sprintOwned && sprintOwner==mc.player && !physical(mc,mc.options.keySprint)) sprintOwner.setSprinting(false);
+        if(sprintOwned && sprintOwner==mc.player && !physical(mc,mc.options.keySprint) && sprintOwner.isSprinting()) sprintOwner.setSprinting(false);
         sprintOwned=false;sprintOwner=null;
     }
     private void finishEating(Minecraft mc,ActionBudget budget) {
@@ -99,9 +99,9 @@ final class UtilityModules {
             : mc.player.getOffhandItem().is(Items.FISHING_ROD) ? InteractionHand.OFF_HAND : null;
         if(hand==null || physical(mc,mc.options.keyUse)) { recast=false;return; }
         if(fishDelay>0) { fishDelay--;return; }
-        if(mc.player.fishing!=null && ((FishingHookAccessor)mc.player.fishing).levrn$isBiting() && budget.take()) {
+        if(mc.player.fishing!=null && ((FishingHookAccessor)mc.player.fishing).levrn$isBiting() && budget.recordPacket() && budget.take()) {
             mc.gameMode.useItem(mc.player,hand);fishDelay=12;recast=true;
-        } else if(recast && mc.player.fishing==null && budget.take()) {
+        } else if(recast && mc.player.fishing==null && budget.recordPacket() && budget.take()) {
             mc.gameMode.useItem(mc.player,hand);fishDelay=20;recast=false;
         }
     }

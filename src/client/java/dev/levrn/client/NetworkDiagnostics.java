@@ -22,7 +22,7 @@ final class NetworkDiagnostics {
         var mc=Minecraft.getInstance();
         if(!mc.isSameThread()) {mc.execute(() -> disconnected(reason));return;}
         var report=new Properties();
-        report.setProperty("version","0.4.1-alpha");report.setProperty("time",Instant.now().toString());
+        report.setProperty("version","0.5.0-alpha");report.setProperty("time",Instant.now().toString());
         report.setProperty("reason",reason.substring(0,Math.min(4096,reason.length())));
         report.setProperty("enabledModules",LevrnClient.STATE.features().stream().filter(f -> f.enabled()).map(f -> f.id).collect(java.util.stream.Collectors.joining(",")));
         report.setProperty("auraRotation",LevrnClient.STATE.auraRotation().name());
@@ -32,7 +32,7 @@ final class NetworkDiagnostics {
         try {
             Files.createDirectories(path.getParent());var temp=Files.createTempFile(path.getParent(),"disconnect-",".tmp");
             try {
-                try(var out=Files.newBufferedWriter(temp)) {report.store(out,"Levrn disconnect diagnostic; packet types only");}
+                try(var out=Files.newBufferedWriter(temp)) {report.store(out,"LVERN disconnect diagnostic; packet types only");}
                 Files.move(temp,path,StandardCopyOption.REPLACE_EXISTING);
             } finally {Files.deleteIfExists(temp);}
             LevrnClient.LOG.info("Disconnect diagnostic written to {}",path);

@@ -1,0 +1,44 @@
+name: Publish verified Windows download
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the verified download to
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+      - name: Verify the version and Windows executable checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          TASK_VERSION=$(sed -n 's/^mod_version=//p' gradle.properties)
+          test "v${TASK_VERSION}" = "${RELEASE_TAG}"
+          cd downloads
+          sha256sum --check "Levrn-${TASK_VERSION}-windows-x64.exe.sha256"
+      - name: Attach the executable and checksum to the release
+        shell: bash
+        run: |
+          set -euo pipefail
+          TASK_VERSION=$(sed -n 's/^mod_version=//p' gradle.properties)
+          gh release upload "${RELEASE_TAG}" \
+            "downloads/Levrn-${TASK_VERSION}-windows-x64.exe" \
+            "downloads/Levrn-${TASK_VERSION}-windows-x64.exe.sha256" \
+            --repo "${GITHUB_REPOSITORY}" --clobber

@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import dev.levrn.client.LevrnClient;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundEntityEventPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.world.phys.Vec3;
@@ -23,4 +24,9 @@ abstract class ClientPacketListenerMixin {
     }
     @Inject(method="handleMovePlayer",at=@At("TAIL"))
     private void levrn$correction(ClientboundPlayerPositionPacket packet,CallbackInfo ci) { LevrnClient.corrected(); }
+    @Inject(method="handleEntityEvent",at=@At("TAIL"))
+    private void levrn$entityEvent(ClientboundEntityEventPacket packet,CallbackInfo ci) {
+        var mc=Minecraft.getInstance();
+        if(mc.player!=null && mc.level!=null && packet.getEntity(mc.level)==mc.player && packet.getEventId()==35) LevrnClient.totemPopped();
+    }
 }

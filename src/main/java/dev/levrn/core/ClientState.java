@@ -45,12 +45,14 @@ public final class ClientState {
         new Feature("clock", "Clock", "A compact local-time clock in your HUD.", Category.VISUAL, false),
         new Feature("compass", "Compass", "Show your current cardinal heading and yaw.", Category.VISUAL, false),
         new Feature("keystrokes", "Keystrokes", "Display movement, jump, and attack input state.", Category.VISUAL, false),
-        new Feature("potion_hud", "Potion HUD", "List your active status effects and remaining duration.", Category.VISUAL, false)
+        new Feature("potion_hud", "Potion HUD", "List your active status effects and remaining duration.", Category.VISUAL, false),
+        new Feature("adaptive", "NOVA", "Levrn NOVA — self-learning combat AI that adjusts settings based on match performance.", Category.COMBAT, false)
     );
     private double attackRange = 3.0;
     private int zoomFov = 30;
     private boolean targetPlayers = true, targetMobs = false, respectTeams, targetInvisible, rotateAura = true;
     private double cooldown = 0.92, aimSpeed = 25, targetFov = 360, totemHealth = 12;
+    private boolean totemAlways;
     private Theme theme = Theme.NOVA;
     private boolean reducedMotion, stickyTargets = true, armorUpgrade = true, preserveElytra = true;
     private double motionSpeed = 1.0, inventoryInterval = 4;
@@ -60,6 +62,97 @@ public final class ClientState {
     private AuraRotation auraRotation = AuraRotation.SILENT;
     private double velocityHorizontal=0, velocityVertical=100, uiScale=1.5;
     private int eatHunger=14, placeDelay=2;
+
+
+    /** Combat preset system — LEGIT, BALANCED, AGGRESSIVE, or CUSTOM (user's own settings). */
+    public enum CombatPreset {
+        LEGIT("Legit"),
+        BALANCED("Balanced"),
+        AGGRESSIVE("Aggressive"),
+        CUSTOM("Custom");
+        public final String label;
+        CombatPreset(String label) { this.label = label; }
+        public CombatPreset next() { return values()[(ordinal() + 1) % values().length]; }
+    }
+    private CombatPreset currentPreset = CombatPreset.CUSTOM;
+
+    public CombatPreset currentPreset() { return currentPreset; }
+    public void setCurrentPreset(CombatPreset value) { currentPreset = java.util.Objects.requireNonNull(value); }
+
+    /** Apply a combat preset, configuring all relevant combat settings and toggling modules. */
+    public void applyCombatPreset(CombatPreset preset) {
+        currentPreset = java.util.Objects.requireNonNull(preset);
+        switch (preset) {
+            case LEGIT -> {
+                // Settings
+                aimSpeed = 10;
+                cooldown = 0.98;
+                attackRange = 2.8;
+                auraRotation = AuraRotation.VISIBLE;
+                respectTeams = true;
+                targetFov = 120;
+                stickyTargets = false;
+                targetPlayers = true;
+                targetMobs = false;
+                targetInvisible = false;
+                // Modules: only safe ones — aim assist and trigger with conservative settings
+                feature("aim_assist").setEnabled(true);
+                feature("trigger").setEnabled(true);
+                feature("aura").setEnabled(false);
+                feature("w_tap").setEnabled(false);
+                feature("criticals").setEnabled(false);
+                feature("auto_weapon").setEnabled(false);
+                feature("shield_breaker").setEnabled(false);
+                feature("velocity").setEnabled(false);
+            }
+            case BALANCED -> {
+                // Settings
+                aimSpeed = 20;
+                cooldown = 0.92;
+                attackRange = 3.0;
+                auraRotation = AuraRotation.SILENT;
+                respectTeams = false;
+                targetFov = 240;
+                stickyTargets = false;
+                targetPlayers = true;
+                targetMobs = false;
+                targetInvisible = false;
+                // Modules: core combat without W-Tap
+                feature("aura").setEnabled(true);
+                feature("aim_assist").setEnabled(true);
+                feature("trigger").setEnabled(true);
+                feature("criticals").setEnabled(true);
+                feature("auto_weapon").setEnabled(true);
+                feature("w_tap").setEnabled(false);
+                feature("shield_breaker").setEnabled(false);
+                feature("velocity").setEnabled(false);
+            }
+            case AGGRESSIVE -> {
+                // Settings
+                aimSpeed = 45;
+                cooldown = 0.88;
+                attackRange = 3.0;
+                auraRotation = AuraRotation.SILENT;
+                respectTeams = false;
+                targetFov = 360;
+                stickyTargets = true;
+                targetPlayers = true;
+                targetMobs = true;
+                targetInvisible = true;
+                // Modules: all combat modules enabled
+                feature("aura").setEnabled(true);
+                feature("trigger").setEnabled(true);
+                feature("aim_assist").setEnabled(true);
+                feature("criticals").setEnabled(true);
+                feature("w_tap").setEnabled(true);
+                feature("auto_weapon").setEnabled(true);
+                feature("shield_breaker").setEnabled(true);
+                feature("velocity").setEnabled(true);
+            }
+            case CUSTOM -> { /* keep current user settings and module states */ }
+        }
+    }
+
     public AuraRotation auraRotation() { return auraRotation; }
     public void setAuraRotation(AuraRotation value) { auraRotation=java.util.Objects.requireNonNull(value); }
     public double velocityHorizontal() { return velocityHorizontal; }
@@ -72,6 +165,8 @@ public final class ClientState {
     public void setEatHunger(int value) { eatHunger=Math.clamp(value,1,19); }
     public int placeDelay() { return placeDelay; }
     public void setPlaceDelay(int value) { placeDelay=Math.clamp(value,2,4); }
+    public boolean adaptiveEnabled() { return enabled("adaptive"); }
+    public void setAdaptiveEnabled(boolean value) { feature("adaptive").setEnabled(value); }
 
     public List<Feature> features() { return features; }
     public Feature feature(String id) {
@@ -103,6 +198,8 @@ public final class ClientState {
     public void setTargetFov(double value) { if (Double.isFinite(value)) targetFov = Math.clamp(value, 15, 360); }
     public double totemHealth() { return totemHealth; }
     public void setTotemHealth(double value) { if (Double.isFinite(value)) totemHealth = Math.clamp(value, 1, 40); }
+    public boolean totemAlways() { return totemAlways; }
+    public void setTotemAlways(boolean value) { totemAlways = value; }
     public Theme theme() { return theme; }
     public void setTheme(Theme value) { theme = java.util.Objects.requireNonNull(value); }
     public boolean reducedMotion() { return reducedMotion; }
@@ -143,6 +240,8 @@ public final class ClientState {
         theme = Theme.NOVA;
         reducedMotion = false; stickyTargets = true; armorUpgrade = true; preserveElytra = true; motionSpeed = 1; inventoryInterval = 4;
         windowX = 0.5; windowY = 0.5;
-        replenishBelow = 8; auraRotation=AuraRotation.SILENT; velocityHorizontal=0; velocityVertical=100; uiScale=1.5; eatHunger=14; placeDelay=2;
+        replenishBelow = 8; auraRotation=AuraRotation.SILENT; velocityHorizontal=0; velocityVertical=100; uiScale=1.5; eatHunger=14; placeDelay=2; totemAlways=false;
+        currentPreset = CombatPreset.CUSTOM;
+        feature("adaptive").setEnabled(false);
     }
 }

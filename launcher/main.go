@@ -40,7 +40,7 @@ func main() {
 }
 
 func run() int {
-	fmt.Println("LEVRN " + clientVersion + " / Minecraft 1.21.11")
+	fmt.Println("LVERN NOVA " + clientVersion + " / Minecraft 1.21.11")
 	attach := flag.String("attach", "", "legacy attachment request (0.4 requires installation and restart)")
 	list := flag.Bool("list", false, "list Java processes for diagnostics")
 	mcDir := flag.String("minecraft-dir", defaultMinecraftDir(), "official Minecraft launcher directory")
@@ -63,7 +63,7 @@ func run() int {
 	if err := install(java, cache, *mcDir); err != nil {
 		return fail(err)
 	}
-	fmt.Println("\nInstalled. Open the Minecraft Launcher, select 'Levrn 1.21.11', and press Play.")
+	fmt.Println("\nInstalled. Open the Minecraft Launcher, select 'LVERN Nova 1.21.11', and press Play.")
 	fmt.Println("Right Shift: menu / C: zoom / End: disable modules.")
 	return 0
 }
@@ -250,36 +250,48 @@ func finishInstall(cache, mcDir string, profiles []string) error {
 	if err := os.MkdirAll(mods, 0700); err != nil {
 		return err
 	}
-	legacy := filepath.Join(mods, "levrn-0.1.0-alpha.jar")
-	if old, err := os.ReadFile(legacy); err == nil {
-		archive, err := zip.NewReader(bytes.NewReader(old), int64(len(old)))
+	// Identify old builds by Fabric mod ID, including renamed and batch-installed JARs.
+	oldBuilds := []string{}
+	for _, dir := range []string{mods, filepath.Join(mcDir, "mods")} {
+		entries, err := os.ReadDir(dir)
+		if os.IsNotExist(err) {
+			continue
+		}
 		if err != nil {
-			return errors.New("legacy Levrn JAR is unreadable; left unchanged")
-		}
-		isLevrn := false
-		for _, entry := range archive.File {
-			if entry.Name != "fabric.mod.json" {
-				continue
-			}
-			reader, err := entry.Open()
-			if err != nil {
-				return err
-			}
-			var metadata struct {
-				ID string `json:"id"`
-			}
-			err = json.NewDecoder(reader).Decode(&metadata)
-			reader.Close()
-			isLevrn = err == nil && metadata.ID == "levrn"
-		}
-		if !isLevrn {
-			return errors.New("legacy filename contains a different mod; left unchanged")
-		}
-		if err := backup(legacy, old); err != nil {
 			return err
 		}
-	} else if !os.IsNotExist(err) {
-		return err
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(strings.ToLower(entry.Name()), ".jar") {
+				continue
+			}
+			path := filepath.Join(dir, entry.Name())
+			isOwn, err := levrnJar(path)
+			if err != nil {
+				name := strings.ToLower(entry.Name())
+				if strings.HasPrefix(name, "levrn") || strings.HasPrefix(name, "lvern") {
+					return fmt.Errorf("cannot inspect old client %s: %w", path, err)
+				}
+				continue
+			}
+			if path == filepath.Join(mods, "levrn.jar") && !isOwn {
+				return errors.New("levrn.jar contains another mod; left unchanged")
+			}
+			if isOwn {
+				oldBuilds = append(oldBuilds, path)
+			}
+		}
+	}
+	for _, path := range oldBuilds {
+		if path == filepath.Join(mods, "levrn.jar") {
+			continue
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		if err := backup(path, data); err != nil {
+			return err
+		}
 	}
 	for _, item := range []struct{ source, target string }{{"levrn-client.jar", "levrn.jar"}, {"fabric-api.jar", "fabric-api-0.141.6+1.21.11.jar"}} {
 		data, err := os.ReadFile(filepath.Join(cache, item.source))
@@ -300,8 +312,13 @@ func finishInstall(cache, mcDir string, profiles []string) error {
 			return err
 		}
 	}
-	if err := os.Remove(legacy); err != nil && !os.IsNotExist(err) {
-		return err
+	for _, path := range oldBuilds {
+		if path == filepath.Join(mods, "levrn.jar") {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("could not replace old client %s; close Minecraft and retry: %w", path, err)
+		}
 	}
 	for _, path := range profiles {
 		data, err := mergeProfile(path, mcDir)
@@ -320,6 +337,32 @@ func finishInstall(cache, mcDir string, profiles []string) error {
 		}
 	}
 	return nil
+}
+
+func levrnJar(path string) (bool, error) {
+	archive, err := zip.OpenReader(path)
+	if err != nil {
+		return false, err
+	}
+	defer archive.Close()
+	for _, entry := range archive.File {
+		if entry.Name != "fabric.mod.json" {
+			continue
+		}
+		reader, err := entry.Open()
+		if err != nil {
+			return false, err
+		}
+		defer reader.Close()
+		var meta struct {
+			ID string `json:"id"`
+		}
+		if err := json.NewDecoder(io.LimitReader(reader, 1<<20)).Decode(&meta); err != nil {
+			return false, err
+		}
+		return meta.ID == "levrn", nil
+	}
+	return false, nil
 }
 
 func mergeProfile(path, mcDir string) ([]byte, error) {
@@ -353,7 +396,7 @@ func mergeProfile(path, mcDir string) ([]byte, error) {
 		}
 	}
 	for key, value := range map[string]any{
-		"name": "Levrn 1.21.11", "type": "custom", "lastVersionId": versionID,
+		"name": "LVERN Nova 1.21.11", "type": "custom", "lastVersionId": versionID,
 		"gameDir": filepath.Join(mcDir, "levrn", "1.21.11"), "levrnManaged": true,
 	} {
 		profile[key], err = json.Marshal(value)

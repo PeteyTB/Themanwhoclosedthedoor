@@ -1,16 +1,30 @@
 # Levrn
 
-An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. This repository is the first alpha foundation for the Levrn project, not a finished commercial release.
+An original modular Minecraft **Java Edition 1.21.11** client built with Fabric and Java 21. LVERN Nova adopts the uploaded client source as its baseline and remains a prerelease alpha.
 
-**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.4.1-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.4.1-alpha)
+**Windows download:** [Levrn.exe](https://github.com/PeteyTB/Themanwhoclosedthedoor/raw/refs/heads/main/downloads/Levrn-0.5.0-alpha-windows-x64.exe) · [Alpha release and installation notes](https://github.com/PeteyTB/Themanwhoclosedthedoor/releases/tag/v0.5.0-alpha)
 
-## Version 0.4.1: supplied HUD and input synchronization
+## Version 0.5: LVERN Nova and the reference interface
+
+The supplied **levrn-nova-complete.zip** is the new source baseline: **42 modules**, the supplied combat behavior, local adaptive matrices, presets and HUD components. Fixed Nova activation, delayed hit observations, per-server model persistence and bounded setting updates. This is local adaptive learning, with transfer between locally saved server profiles; no global learning service is included.
+
+The reference interface now has two views: a compact sidebar/list/inspector workspace and floating category panels. Both share translucent charcoal surfaces, WARNING/STANDARD badges, animated switches, smooth scrolling and an independent **HUD Studio** dock. Its Library controls the real HUD modules; Layouts applies HUD presets; Style changes theme, density and motion. Oversampled Lato typography replaces the previous display font. Keep the project's LVERN branding and real module inventory.
+
+![LVERN Nova workspace in Minecraft](docs/screenshots/nova-workspace.png)
+
+[Panels view](docs/screenshots/nova-panels.png) · [Nova inspector](docs/screenshots/nova-inspector.png) · [release changes and verification](docs/NOVA_RELEASE.md)
+
+**Upgrade:** close Minecraft and the launcher, run the new **Levrn.exe**, then select **LVERN Nova 1.21.11** in the official launcher. The executable includes the current client and Fabric components. It backs up older JARs identified by mod ID in the managed and default mods folders, installs one managed `levrn.jar`, and preserves settings, worlds and unrelated mods. Use this fresh executable instead of the older executable included in the source upload.
+
+Nova remains opt-in. Public-server compatibility is unverified; local test results do not establish anti-cheat acceptance. The Windows executable is cross-compiled and has not been run on Windows.
+
+## Version 0.4.1 (historical): supplied HUD and input synchronization
 
 The user's HUD code is adapted to Minecraft 1.21.11: cyan bracketed panels, an animated watermark, compact info rows, animated durability bars, potion timers and glowing keystrokes. All HUD text uses one oversampled TrueType font. Existing visual toggles remain available. [HUD screenshot](docs/screenshots/hud-world.png) · [implementation and verification](docs/HUD_AND_INPUT_FIX.md).
 
 ![HUD adapted from the supplied code](docs/screenshots/hud-world.png)
 
-Silent Aura now prepares rotation **before vanilla physics**, with matching native movement directions. Sprint/W Tap update native sprint input; Criticals and Safe Walk use native jump/sneak input. A repeated server correction stops gameplay modules and preserves the HUD. Disconnect details and packet-type history stay locally in `config/levrn/last-disconnect.properties`. A server-specific rejection is still unverified.
+Silent Aura now prepares rotation **before vanilla physics**, with matching native movement directions. Sprint/W Tap update native sprint input; Criticals and Safe Walk use native jump/sneak input. That release stopped gameplay modules after repeated corrections; the adopted Nova source instead pauses briefly and feeds corrections to the model while preserving the selected modules. Disconnect details and packet-type history stay locally in `config/levrn/last-disconnect.properties`. A server-specific rejection is still unverified.
 
 ## Version 0.4: compact workspace, combat sequencing and ten more modules
 
@@ -54,7 +68,7 @@ The official LiquidLauncher and LiquidBounce source trees were inspected. Liquid
 
 ## Current implementation
 
-- Searchable category/card interface with keyboard-accessible controls and four original themes: Nova, Dusk, Glacier, Ember.
+- Searchable category/card interface with keyboard-accessible controls and eight themes, including the reference-style neutral Nova palette.
 - Trigger and nearest-target Aura with attack cooldown, visibility, team, creative, and range checks. New profiles include player targets; existing profiles preserve their filters. The Settings PvP preset can enable them. Both modules start disabled.
 - Sprint, hotbar Auto Tool, toggle Zoom, and vanilla maximum Brightness. Tool, FOV, brightness, and owned sprint changes are restored when deactivated or leaving the world.
 - Watermark/FPS, coordinates/dimension, active module list, and crosshair target health HUD.
@@ -69,9 +83,9 @@ Controls: **Right Shift** opens the menu, **C** toggles zoom, **End** disables a
 
 1. Close Minecraft and the official Minecraft Launcher.
 2. Run `Levrn.exe`. First installation needs internet access for the official Fabric Loader libraries.
-3. Open the Minecraft Launcher, select **Levrn 1.21.11**, and press **Play**. Normal Minecraft authentication stays with the official launcher.
+3. Open the Minecraft Launcher, select **LVERN Nova 1.21.11**, and press **Play**. Normal Minecraft authentication stays with the official launcher.
 
-The installer writes a dedicated game directory at `%APPDATA%\.minecraft\levrn\1.21.11`, adds a separate launcher profile, and backs up launcher profile files before updates. Version 0.2 migrates the earlier client JAR to a stable `mods/levrn.jar` filename, retaining a backup and preventing duplicate mod IDs; custom JVM profile settings are preserved. Existing game directories and mods are preserved. It supports both normal and Microsoft Store launcher profile files. Alternative launcher directories can be supplied with `--minecraft-dir`.
+The installer writes a dedicated game directory at `%APPDATA%\.minecraft\levrn\1.21.11`, adds a separate launcher profile, and backs up launcher profile files before updates. Version 0.5 detects Levrn by its Fabric mod ID, backs up previous copies in the managed/default mods folders, and installs one stable managed `mods/levrn.jar`; custom JVM profile settings are preserved. Existing game directories and mods are preserved. It supports both normal and Microsoft Store launcher profile files. Alternative launcher directories can be supplied with `--minecraft-dir`.
 
 ```powershell
 .\Levrn.exe --java "C:\Program Files\Eclipse Adoptium\jdk-21\bin\java.exe"
@@ -105,7 +119,7 @@ Use a **Java 21 JDK** (a JRE alone is insufficient).
 ./gradlew runClient
 ```
 
-The intended distributable is `build/libs/levrn-0.4.1-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
+The intended distributable is `build/libs/levrn-0.5.0-alpha.jar`. Install Fabric Loader and Fabric API for Minecraft 1.21.11 and put the built JAR in the game instance's `mods` directory. Do not use the `-sources.jar`.
 
 In the managed cloud environment:
 
@@ -120,7 +134,7 @@ The setup helper installs a checksum-verified JDK under `/workspace/.tools`. The
 
 `bash scripts/test-core.sh` exercises the actual pure-Java module registry and profile implementation without Minecraft downloads. `./gradlew check` also runs these checks once Fabric dependencies resolve.
 
-The full Minecraft 1.21.11 Gradle build now passes, including all **92 core behavioral checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
+The full Minecraft 1.21.11 Gradle build now passes, including all **98 core behavioral checks** and **16 Nova model checks**, and produces the remapped client JAR. Internet access is available; the cloud Gradle helper uses the environment's trusted Java CA store to preserve proxy TLS verification. The 1.21.11 button-rendering API mismatch and the standalone test source-set configuration were corrected during compilation.
 
 Go installer checks pass for profile preservation, idempotent updates, malformed/conflicting input, recoverable backups, version checks, and embedded payload extraction. A real end-to-end Fabric installation ran through the Linux build in an isolated temporary Minecraft directory, installed the official libraries and both mod JARs, and preserved the existing profile. Two real JVM attachment rejection tests cover unsupported and agent-disabled targets; 0.4 additionally rejects late installation of its required startup hooks.
 
@@ -128,7 +142,7 @@ The Windows PE executable was cross-compiled; **it has not been run on Windows**
 
 The optional `runClientGameTest` task starts an isolated integrated-server scenario covering target filters, server damage, armor, totems and replenishment. Test classes are excluded from release JARs. Both cloud attempts (including a retry with bounded Java worker threads) timed out during world loading, before any gameplay assertions; neither is a passing server test.
 
-`runLocalSmoke` exercises an ordinary client and integrated server, bypassing the older test framework's world-loading barrier. Its test mod and automatic world creation are opt-in and excluded from the packaged client. The run passed: target filtering, Silent Aura with an unchanged backwards-facing camera, Trigger damage, paced worn-armor upgrades, replenishment conserving 67 items, incoming knockback scaling, real-jump critical attacks, and Safe Walk with Auto Walk. The updated run also passes moving Aura + W Tap + Sprint with matching native input, repeated-correction shutdown, and actual disconnect-report persistence. Startup mixin auditing also completed. This proves controlled local interactions, not server-specific anti-cheat acceptance.
+`runLocalSmoke` exercises an ordinary client and integrated server, bypassing the older test framework's world-loading barrier. Its test mod and automatic world creation are opt-in and excluded from the packaged client. The run passed: target filtering, Silent Aura with an unchanged backwards-facing camera, Trigger damage, paced worn-armor upgrades, replenishment conserving 67 items, incoming knockback scaling, real-jump critical attacks, and Safe Walk with Auto Walk. The updated run also passes moving Aura + W Tap + Sprint with matching native input, the uploaded correction handling with Nova observations, actual disconnect-report persistence, and Nova profile persistence. Startup mixin auditing also completed. This proves controlled local interactions, not server-specific anti-cheat acceptance.
 
 ## Gameplay acceptance checks
 

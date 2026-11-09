@@ -22,11 +22,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public final class LevrnClient implements ClientModInitializer {
-    public static final Logger LOG = LoggerFactory.getLogger("Levrn");
+    public static final Logger LOG = LoggerFactory.getLogger("LVERN");
     public static final ClientState STATE = new ClientState();
     private static final ConfigStore CONFIG = new ConfigStore(
         FabricLoader.getInstance().getConfigDir().resolve("levrn/profile.properties"));
     static final ModuleRuntime runtime = new ModuleRuntime(STATE);
+    private static AdaptiveStore novaStore;
+    private static AdaptiveEngine novaEngine;
     private KeyMapping menu, panic, zoom;
     private static String status = "Ready";
     private static boolean initialized;
@@ -39,6 +41,8 @@ public final class LevrnClient implements ClientModInitializer {
         if (initialized) return;
         initialized = true;
         load();
+        novaStore = new AdaptiveStore(FabricLoader.getInstance().getConfigDir().resolve("levrn"));
+        novaStore.loadGlobalSettings();
         menu = key("menu", GLFW.GLFW_KEY_RIGHT_SHIFT);
         panic = key("panic", GLFW.GLFW_KEY_END);
         zoom = key("zoom", GLFW.GLFW_KEY_C);
@@ -56,9 +60,34 @@ public final class LevrnClient implements ClientModInitializer {
                 });
             }
         });
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler,sender,client) -> NetworkDiagnostics.joined());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler,sender,client) -> {
+            NetworkDiagnostics.joined();
+            if (novaStore != null) {
+                String serverIp = client.getCurrentServer()==null ? null : client.getCurrentServer().ip;
+                ServerProfile profile = novaStore.getOrCreateProfile(serverIp);
+                novaEngine = new AdaptiveEngine(profile.signals(), profile.weightMatrix());
+                novaEngine.restoreState(profile.momentum(), profile.confidence());
+                novaEngine.setLearningRateMultiplier(novaStore.learningRateMultiplier());
+                novaEngine.setEnabled(STATE.adaptiveEnabled());
+                runtime.nova = novaEngine;
+                LOG.info("NOVA: Engine initialized for server {}", ServerProfile.hashServerIp(serverIp));
+            }
+        });
         ClientTickEvents.START_CLIENT_TICK.register(runtime::beginTick);
-        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler,client) -> runtime.disconnected());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler,client) -> {
+            runtime.disconnected();
+            if(novaEngine!=null) novaEngine.setEnabled(false);
+            if (novaStore != null) {
+                novaStore.capture(novaEngine);
+                novaStore.save();
+                novaStore.clearActive();
+            }
+            if (novaEngine != null) {
+                novaEngine.setEnabled(false);
+                runtime.nova = null;
+                novaEngine = null;
+            }
+        });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (saveTicks > 0 && --saveTicks == 0) save();
             if (Boolean.getBoolean("levrn.uiSmoke") && !uiSmokeOpened && ++uiSmokeTicks >= 100
@@ -76,16 +105,21 @@ public final class LevrnClient implements ClientModInitializer {
                 if (client.screen == null) toggle(STATE.feature("zoom"));
             }
             MODULE_KEYS.forEach((id,binding) -> { while (binding.consumeClick()) if (client.screen == null) toggle(STATE.feature(id)); });
+            if(novaEngine!=null) novaEngine.setEnabled(STATE.adaptiveEnabled());
+            if(novaStore!=null) novaStore.setNovaEnabled(STATE.adaptiveEnabled());
             try { runtime.tick(client); } finally { runtime.restoreCamera(); }
+            if (novaStore != null) novaStore.tick(novaEngine);
         });
         HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT,
             Identifier.fromNamespaceAndPath("levrn", "overlay"), (graphics, delta) -> LevrnHud.render(graphics));
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             runtime.restore(client);
+            if(novaEngine!=null) novaEngine.setEnabled(false);
+            if (novaStore != null) {novaStore.capture(novaEngine);novaStore.saveAll();}
             flushSave();
             // Changes are saved at the point of interaction, never overwrite an unreadable profile on exit.
         });
-        LOG.info("Levrn 0.4.1-alpha initialized for Minecraft 1.21.11");
+        LOG.info("LVERN 0.5.0-alpha initialized for Minecraft 1.21.11");
     }
 
     private KeyMapping key(String id, int code) {
@@ -110,22 +144,24 @@ public final class LevrnClient implements ClientModInitializer {
     public static void save() {
         saveTicks = 0;
         try { CONFIG.save(STATE); status = "Profile saved"; }
-        catch (IOException e) { status = "Save failed: see log"; LOG.error("Could not save Levrn profile", e); }
+        catch (IOException e) { status = "Save failed: see log"; LOG.error("Could not save LVERN profile", e); }
     }
     public static void load() {
         try { CONFIG.load(STATE); status = "Profile loaded"; }
         catch (IOException | IllegalArgumentException e) {
-            status = "Profile unreadable: see log"; LOG.error("Could not load Levrn profile", e);
+            status = "Profile unreadable: see log"; LOG.error("Could not load LVERN profile", e);
         }
     }
     public static void panic() {
         STATE.disableAll();runtime.restore(Minecraft.getInstance());save();
-        Notifications.add("ALL SYSTEMS DISABLED","Every Levrn module has been stopped");
+        Notifications.add("ALL SYSTEMS DISABLED","Every LVERN module has been stopped");
     }
     public static void toggle(dev.levrn.core.Feature feature) {
         feature.toggle(); save(); Notifications.add(feature.name,feature.enabled() ? "ONLINE" : "OFFLINE");
     }
     public static void scheduleSave() { saveTicks = 8; status = "Saving changes..."; }
+    public static void totemPopped() { runtime.totemPopped(); }
+    public static AdaptiveEngine novaEngine() { return novaEngine; }
     public static void flushSave() { if (saveTicks > 0) save(); }
     public static String keyLabel(String id) {
         KeyMapping mapping = MODULE_KEYS.get(id);

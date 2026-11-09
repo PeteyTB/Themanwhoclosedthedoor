@@ -80,13 +80,13 @@ func TestInstallCopiesModsAndCreatesRecoverableBackups(t *testing.T) {
 	versionDir := filepath.Join(mc, "versions", versionID)
 	_ = os.MkdirAll(versionDir, 0700)
 	_ = os.WriteFile(filepath.Join(versionDir, versionID+".json"), []byte(`{"id":"`+versionID+`","inheritsFrom":"1.21.11"}`), 0600)
-	_ = os.WriteFile(filepath.Join(cache, "levrn-client.jar"), []byte("client fixture"), 0600)
+	_ = os.WriteFile(filepath.Join(cache, "levrn-client.jar"), modFixture(t, "levrn"), 0600)
 	_ = os.WriteFile(filepath.Join(cache, "fabric-api.jar"), []byte("api fixture"), 0600)
 	if err := finishInstall(cache, mc, []string{profiles}); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(mc, "levrn", "1.21.11", "mods", "levrn.jar"))
-	if err != nil || string(b) != "client fixture" {
+	if err != nil || !bytes.Equal(b, modFixture(t, "levrn")) {
 		t.Fatal("client not installed", err)
 	}
 	backups, _ := filepath.Glob(profiles + ".levrn-backup-*")
@@ -194,5 +194,62 @@ func TestLauncherProcessDetection(t *testing.T) {
 	}
 	if launcherOpen([]byte("\"javaw.exe\",\"789\",\"Console\"\n")) {
 		t.Fatal("unrelated Java process blocked installation")
+	}
+}
+
+func modFixture(t *testing.T, id string) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	z := zip.NewWriter(&b)
+	w, err := z.Create("fabric.mod.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = w.Write([]byte(`{"id":"` + id + `","version":"old"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = z.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+func TestReplaceRenamedAndBatchInstalledClients(t *testing.T) {
+	mc, cache, profile := fixture(t)
+	dir := filepath.Join(mc, "versions", versionID)
+	os.MkdirAll(dir, 0700)
+	os.WriteFile(filepath.Join(dir, versionID+".json"), []byte(`{"id":"`+versionID+`","inheritsFrom":"1.21.11"}`), 0600)
+	os.WriteFile(filepath.Join(cache, "levrn-client.jar"), modFixture(t, "levrn"), 0600)
+	os.WriteFile(filepath.Join(cache, "fabric-api.jar"), []byte("api"), 0600)
+	managed := filepath.Join(mc, "levrn", "1.21.11", "mods")
+	normal := filepath.Join(mc, "mods")
+	os.MkdirAll(managed, 0700)
+	os.MkdirAll(normal, 0700)
+	olds := []string{filepath.Join(managed, "levrn-client.jar"), filepath.Join(managed, "client-renamed.jar"), filepath.Join(normal, "levrn-0.4.2-alpha.jar")}
+	for _, p := range olds {
+		os.WriteFile(p, modFixture(t, "levrn"), 0600)
+	}
+	other := filepath.Join(managed, "other.jar")
+	os.WriteFile(other, modFixture(t, "unrelated"), 0600)
+	if err := finishInstall(cache, mc, []string{profile}); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range olds {
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			t.Fatalf("duplicate retained: %s", p)
+		}
+		backups, _ := filepath.Glob(p + ".levrn-backup-*")
+		if len(backups) == 0 {
+			t.Fatalf("backup missing: %s", p)
+		}
+	}
+	if b, _ := os.ReadFile(other); !bytes.Equal(b, modFixture(t, "unrelated")) {
+		t.Fatal("unrelated mod changed")
+	}
+	if ok, err := levrnJar(filepath.Join(managed, "levrn.jar")); !ok || err != nil {
+		t.Fatal("new client missing", err)
+	}
+	if err := finishInstall(cache, mc, []string{profile}); err != nil {
+		t.Fatal("update not repeatable", err)
 	}
 }

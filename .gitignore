@@ -7,3 +7,5 @@ run/
 __pycache__/
 *.pyc
 /launcher/payload/
+
+/logs/

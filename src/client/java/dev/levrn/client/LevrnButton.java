@@ -6,8 +6,14 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import dev.levrn.core.Motion;
 
-/** Original visual treatment over vanilla's accessible button/input behavior. */
+/** Clean flat button with subtle hover transitions and switch-style toggles. */
 final class LevrnButton extends Button {
+    private String severity;
+    void severity(String label) {severity=label;}
+    private boolean settingRow;
+    void settingRow() { settingRow=true; }
+    private boolean leftAligned;
+    LevrnButton alignLeft() { leftAligned=true;return this; }
     private final boolean highlighted;
     private final UiMotion.Channel motion;
     private final boolean switchStyle;
@@ -35,31 +41,69 @@ final class LevrnButton extends Button {
     @Override protected void renderContents(GuiGraphics g, int mouseX, int mouseY, float delta) {
         int x = getX(), y = getY(), w = getWidth();
         int accent = LevrnClient.STATE.theme().accent;
-        motion.update(isHoveredOrFocused(),highlighted);
+        motion.update(isHoveredOrFocused(),settingRow ? getMessage().getString().endsWith("ON") : highlighted);
         double hover = motion.hover.value(), on = motion.enabled.value();
-        int border = Motion.mix(Motion.mix(0xFF243647,accent,on*0.45),accent,hover*0.8);
-        rounded(g, x-1, y-1, w+2, 18, UiMotion.fade((int)(hover*45)<<24 | accent & 0xFFFFFF));
+
+        if(settingRow) {
+            String full=getMessage().getString();
+            int split=full.lastIndexOf(" / ");
+            if(split<0) split=full.lastIndexOf(": ");
+            String label=split<0 ? full : full.substring(0,split);
+            String value=split<0 ? "" : full.substring(split+(full.charAt(split)==':' ? 2 : 3));
+            boolean toggle=value.equals("ON") || value.equals("OFF");
+            if(hover>.01) rounded(g,x,y,w,16,UiMotion.fade((int)(hover*24)<<24|0xA0A8B8));
+            int reserve=toggle ? 24 : value.isEmpty() ? 8 : InterfaceText.width(value)+14;
+            InterfaceText.draw(g,InterfaceText.fit(label,w-reserve-10),x+5,y+4,UiMotion.fade(0xFFD8D8DC));
+            if(toggle) {
+                var state=motion.enabled;
+                int tx=x+w-20;
+                rounded(g,tx,y+6,14,5,UiMotion.fade(Motion.mix(0xFF343A46,0xFF77829A,state.value())));
+                rounded(g,tx+1+(int)Math.round(state.value()*8),y+6,5,5,UiMotion.fade(value.equals("ON")?0xFFF0F1F5:0xFF8E96A7));
+            } else if(!value.isEmpty()) {
+                int vw=InterfaceText.width(value);
+                rounded(g,x+w-vw-11,y+3,vw+7,11,UiMotion.fade(0xA043495A));
+                InterfaceText.draw(g,value,x+w-vw-7,y+4,UiMotion.fade(0xFFC7CDDA));
+            }
+            return;
+        }
+
+        // Clean flat background with subtle hover transition
+        int bg = Motion.mix(Motion.mix(0x5513161C, 0xD0080A0D, on), 0xB020232A, hover * 0.8);
+        int border = Motion.mix(0x202A303B, accent, on * 0.08 + hover * 0.18);
         rounded(g, x, y, w, 16, UiMotion.fade(border));
-        rounded(g, x + 1, y + 1, w - 2, 14,
-            UiMotion.fade(Motion.mix(Motion.mix(0xFF0C1724,0xFF16384A,on),0xFF214359,hover*0.65)));
+        rounded(g, x + 1, y + 1, w - 2, 14, UiMotion.fade(bg));
+
         var font = Minecraft.getInstance().font;
-        String text = InterfaceText.fit(getMessage().getString(), Math.max(1, w - (switchStyle ? 29 : 8)));
-        InterfaceText.draw(g, text, switchStyle ? x+5 : x + (w - InterfaceText.width(text)) / 2, y + 4,
-            UiMotion.fade(Motion.mix(LevrnHud.TEXT,accent,Math.max(on,hover))));
-        if (switchStyle) {
+        int badge=severity==null ? 0 : (int)Math.ceil(InterfaceText.width(severity)*.7)+6;
+        String text = InterfaceText.fit(getMessage().getString(), Math.max(1, w - (switchStyle && badge==0 ? 29 : 8)- (badge>0 ? badge+5 : 0)));
+        int textColor = Motion.mix(0xFFA0A0A6, on > 0.5 ? accent : 0xFFD8D8DC, Math.max(on, hover));
+        InterfaceText.draw(g, text, switchStyle || leftAligned ? x+5+(badge>0 ? badge+5 : 0) : x + (w - InterfaceText.width(text)) / 2, y + 4,
+            UiMotion.fade(textColor));
+
+        if(badge>0) {
+            boolean warning=severity.equals("WARNING");int bx=x+5;
+            g.fill(bx,y+4,bx+badge,y+12,UiMotion.fade(warning?0x992E0D14:0x99525668));
+            g.pose().pushMatrix();g.pose().translate(bx+3,y+4);g.pose().scale(.7f,.7f);
+            InterfaceText.draw(g,severity,0,0,UiMotion.fade(warning?0xFFFF5969:0xFFC5C9D8));g.pose().popMatrix();
+        }
+        if (switchStyle && badge==0) {
+            // Clean pill-style toggle switch
             int trackX = x+w-21;
-            rounded(g,trackX,y+5,16,6,UiMotion.fade(Motion.mix(0xFF314350,accent,on*0.7)));
-            rounded(g,trackX+1+(int)Math.round(on*10),y+6,4,4,UiMotion.fade(Motion.mix(0xFF8495A1,0xFFE8FFFF,on)));
-        } else if (hover>0.01 || on>0.01) {
-            int length = (int)((w-10)*Math.max(hover,on));
-            g.fill(x+(w-length)/2,y+14,x+(w+length)/2,y+15,UiMotion.fade(accent));
+            int trackBg = Motion.mix(0xFF222226, accent, on * 0.7);
+            rounded(g,trackX,y+5,16,6,UiMotion.fade(trackBg));
+            // Switch knob - clean circle
+            int knobX = trackX+1+(int)Math.round(on*10);
+            int knobColor = on > 0.5 ? 0xFFE8E8EA : 0xFF606066;
+            rounded(g,knobX,y+6,4,4,UiMotion.fade(knobColor));
+        } else if (on > 0.01) {
+            // Subtle bottom accent line for active non-switch buttons
+            g.fill(x+2, y+15, x+w-2, y+16, UiMotion.fade(Motion.mix(0x00000000, accent, on * 0.5)));
         }
     }
     static void rounded(GuiGraphics g, int x, int y, int w, int h, int color) {
         if (w<=0 || h<=0 || color>>>24==0) return;
         int radius=Math.min(h>40 ? 8 : 4,Math.min(w,h)/2);
         if (radius<1) { g.fill(x,y,x+w,y+h,color); return; }
-        // Disjoint bands keep translucent surfaces uniform; cached edge coverage smooths corners.
         g.fill(x,y+radius,x+w,y+h-radius,color);
         for (int row=0;row<radius;row++) {
             double inset=CORNER_INSETS[radius][row];

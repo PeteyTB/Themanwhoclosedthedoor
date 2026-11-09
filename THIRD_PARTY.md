@@ -7,3 +7,5 @@
 - No code, fonts, logos, textures, binaries, or decompiled implementations from the uploaded clients are embedded in Levrn. The uploads remain outside this checkout as reference material.
 - LiquidBounce's public documentation identifies its source as GPL-3.0. No LiquidBounce source has been copied into this project.
 - The interface uses Rajdhani Medium from Google Fonts under the SIL Open Font License 1.1. The full license is retained in `src/main/resources/META-INF/licenses/rajdhani-ofl.txt` and the client JAR. Source: https://github.com/google/fonts/tree/main/ofl/rajdhani . No font from the uploaded clients is repackaged.
+
+- Lato Regular: SIL Open Font License 1.1. Source: https://github.com/google/fonts/tree/main/ofl/lato . Bundled license: `META-INF/licenses/lato-ofl.txt`. Font SHA-256: `d636e4683231f931eda222d588e944d082bfd3bdba02f928bee461c0f185b251`.

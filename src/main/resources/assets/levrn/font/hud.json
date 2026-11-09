@@ -1,6 +1,18 @@
 {
   "providers": [
-    {"type": "ttf", "file": "levrn:rajdhani-medium.ttf", "shift": [0, 0], "size": 11, "oversample": 4},
-    {"type": "reference", "id": "minecraft:default"}
+    {
+      "type": "ttf",
+      "file": "levrn:lato-regular.ttf",
+      "shift": [
+        0,
+        0
+      ],
+      "size": 10,
+      "oversample": 8
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:default"
+    }
   ]
 }
